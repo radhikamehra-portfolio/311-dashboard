@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Kick it in the Park – 311 Request Analysis Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,"Segoe UI",system-ui,sans-serif;background:#1a1f2e;color:#e2e8f0;font-size:14px;line-height:1.6;display:flex;flex-direction:row}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:240px;min-width:240px;
+  background:#0f172a;
+  border-right:1px solid #1e293b;
+  display:flex;flex-direction:column;
+  height:100vh;overflow-y:auto;overflow-x:hidden;
+  transition:width .28s ease,min-width .28s ease;
+  flex-shrink:0;position:relative;z-index:10;
+}
+#sidebar.collapsed{width:0;min-width:0;border-right:none}
+#sidebar.collapsed .nav-inner{opacity:0;pointer-events:none}
+.nav-inner{transition:opacity .15s ease;padding-bottom:20px}
+.nav-brand{padding:20px 18px 14px;border-bottom:1px solid #1e293b}
+.nav-brand h1{font-size:11px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+
+.nav-group{margin-top:6px}
+.nav-group-label{padding:10px 18px 4px;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.nav-tab{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 18px;color:#94a3b8;font-size:13px;font-weight:500;
+  cursor:pointer;border-left:3px solid transparent;
+  transition:background .15s,color .15s,border-color .15s;
+  white-space:nowrap;user-select:none;
+}
+.nav-tab:hover{background:#1e293b;color:#cbd5e1}
+.nav-tab.active{color:#f1f5f9;background:#1e293b;border-left-color:#60a5fa}
+.nav-tab .tab-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-26{background:#3b82f6}
+.dot-25{background:#10b981}
+.dot-24{background:#f97316}
+.dot-cmp{background:#f59e0b}
+
+.nav-section{margin-top:4px}
+.nav-sub{
+  display:flex;align-items:center;
+  padding:8px 18px 8px 36px;color:#64748b;font-size:12px;
+  cursor:pointer;white-space:nowrap;
+  transition:background .12s,color .12s;
+}
+.nav-sub:hover{background:#1e293b;color:#94a3b8}
+.nav-sub.active{color:#93c5fd}
+
+/* ── TOGGLE BUTTON ── */
+#toggle-btn{
+  position:fixed;top:12px;left:248px;z-index:200;
+  background:#1e293b;border:1px solid #334155;border-radius:6px;
+  color:#64748b;cursor:pointer;width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  transition:left .28s ease,background .15s;
+}
+#toggle-btn:hover{background:#334155;color:#e2e8f0}
+body.sidebar-collapsed #toggle-btn{left:8px}
+
+/* ── MAIN ── */
+#main-wrap{
+  flex:1;min-width:0;
+  height:100vh;overflow-y:auto;overflow-x:hidden;
+  position:relative;
+}
+
+/* ── TAB PAGES ── */
+.tab-page{display:none}
+.tab-page.active{display:block}
+
+/* ── SECTIONS ── */
+.section{padding:36px 44px 52px;border-bottom:1px solid #1e293b}
+.hero{background:linear-gradient(135deg,#0b1120 0%,#0f1f3d 100%);padding:52px 52px 44px;text-align:center}
+.hero h2{font-size:28px;font-weight:800;color:#f1f5f9;margin-bottom:16px;line-height:1.25}
+.hero p{max-width:800px;margin:0 auto;color:#94a3b8;font-size:14px;line-height:1.85}
+.hero-25{background:linear-gradient(135deg,#022c22 0%,#064e3b 100%)}
+.hero-cmp{background:linear-gradient(135deg,#1c1407 0%,#3b2200 100%)}
+.year-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;margin-bottom:14px;letter-spacing:.06em;text-transform:uppercase}
+.badge-26{background:#1d4ed8;color:#bfdbfe}
+.badge-25{background:#065f46;color:#a7f3d0}
+.badge-cmp{background:#78350f;color:#fde68a}
+
+.section-header{background:#0f172a;margin:-36px -44px 32px;padding:20px 44px;border-bottom:1px solid #1e293b}
+.section-header h3{font-size:19px;font-weight:700;color:#f1f5f9}
+.section-header p{color:#64748b;font-size:13px;margin-top:3px}
+
+.card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px;margin-bottom:24px}
+.card h4{font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:14px}
+.card .insight{color:#64748b;font-size:13px;line-height:1.75;margin-top:12px}
+.card .insight strong{color:#cbd5e1}
+
+/* ── TAB INDICATOR BANNER ── */
+.tab-banner{
+  position:sticky;top:0;z-index:40;
+  padding:8px 44px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;gap:10px;border-bottom:1px solid;
+}
+.tab-banner-26{background:#0c1829;color:#60a5fa;border-color:#1d4ed8}
+.tab-banner-25{background:#052e16;color:#34d399;border-color:#065f46}
+.tab-banner-24{background:#1a0d00;color:#fb923c;border-color:#c2410c}
+.tab-banner-cmp{background:#1c1000;color:#fbbf24;border-color:#b45309}
+.tab-banner-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+.stat-row{display:flex;gap:14px;margin-bottom:28px;flex-wrap:wrap}
+.stat-card{flex:1;min-width:130px;background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:16px;text-align:center}
+.stat-card .num{font-size:26px;font-weight:800}
+.stat-card .lbl{font-size:11px;color:#475569;margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+.num-26{color:#60a5fa}.num-25{color:#34d399}.num-24{color:#fb923c}.num-cmp{color:#fbbf24}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.grid-3{display:grid;grid-template-columns:2fr 1fr;gap:22px}
+.chart-lg{width:100%;height:440px}
+.chart-md{width:100%;height:340px}
+.chart-sm{width:100%;height:260px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#0f172a;color:#64748b;font-weight:600;padding:9px 11px;text-align:left;border-bottom:1px solid #334155}
+td{padding:8px 11px;border-bottom:1px solid #1e293b;color:#cbd5e1}
+tr:hover td{background:#243347}
+
+footer{padding:18px 44px;text-align:center;border-top:1px solid #1e293b;color:#334155;font-size:12px}
+
+/* ── GLOBAL FILTER BAR ── */
+#filter-bar{
+  position:sticky;top:0;z-index:50;
+  background:#0f172a;border-bottom:1px solid #334155;
+  padding:10px 44px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+#filter-bar label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+#filter-bar select{
+  background:#1e293b;border:1px solid #334155;border-radius:6px;
+  color:#e2e8f0;font-size:12px;padding:5px 28px 5px 10px;
+  cursor:pointer;outline:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 8px center;
+  min-width:160px;
+}
+#filter-bar select:hover{border-color:#60a5fa}
+#filter-bar .filter-reset{
+  font-size:11px;color:#60a5fa;cursor:pointer;padding:5px 10px;
+  border:1px solid #1e3a5f;border-radius:6px;background:transparent;
+  white-space:nowrap;
+}
+#filter-bar .filter-reset:hover{background:#1e3a5f}
+#filter-bar .filter-count{font-size:11px;color:#475569;margin-left:auto;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<button id="toggle-btn" title="Toggle sidebar">&#9776;</button>
+
+<!-- ── GLOBAL FILTER BAR (inside main-wrap, injected by JS) ── -->
+
+<!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+<nav id="sidebar">
+<div class="nav-inner">
+  <div class="nav-brand"><h1>311 Request Analysis</h1></div>
+
+  <div class="nav-group">
+    <div class="nav-tab active" data-tab="tab-26">
+      <span class="tab-dot dot-26"></span>2026 Kick it in the Park
+    </div>
+    <div class="nav-section" id="sub-26">
+      <div class="nav-sub active" data-tab="tab-26" data-sec="sec-26-intro">Introduction</div>
+      <div class="nav-sub" data-tab="tab-26" data-sec="sec-26-cat">Complaint Category</div>
+      <div class="nav-sub" data-tab="tab-26" data-sec="sec-26-count">Complaint Count</div>
+      <div class="nav-sub" data-tab="tab-26" data-sec="sec-26-day">Day Categorization &amp; Mode</div>
+      <div class="nav-sub" data-tab="tab-26" data-sec="sec-26-profile">Requestor Profile</div>
+      <div class="nav-sub" data-tab="tab-26" data-sec="sec-26-peak">Peak Hours</div>
+    </div>
+  </div>
+
+  <div class="nav-group" style="margin-top:8px">
+    <div class="nav-tab" data-tab="tab-25">
+      <span class="tab-dot dot-25"></span>2025 311 Analysis
+    </div>
+    <div class="nav-section" id="sub-25" style="display:none">
+      <div class="nav-sub" data-tab="tab-25" data-sec="sec-25-intro">Introduction</div>
+      <div class="nav-sub" data-tab="tab-25" data-sec="sec-25-cat">Complaint Category</div>
+      <div class="nav-sub" data-tab="tab-25" data-sec="sec-25-count">Complaint Count</div>
+      <div class="nav-sub" data-tab="tab-25" data-sec="sec-25-day">Daily &amp; Hourly Patterns</div>
+      <div class="nav-sub" data-tab="tab-25" data-sec="sec-25-profile">Requestor Profile</div>
+      <div class="nav-sub" data-tab="tab-25" data-sec="sec-25-peak">Peak Hours</div>
+    </div>
+  </div>
+
+  <div class="nav-group" style="margin-top:8px">
+    <div class="nav-tab" data-tab="tab-24">
+      <span class="tab-dot dot-24"></span>2024 311 Analysis
+    </div>
+    <div class="nav-section" id="sub-24" style="display:none">
+      <div class="nav-sub" data-tab="tab-24" data-sec="sec-24-intro">Introduction</div>
+      <div class="nav-sub" data-tab="tab-24" data-sec="sec-24-cat">Complaint Category</div>
+      <div class="nav-sub" data-tab="tab-24" data-sec="sec-24-count">Complaint Count</div>
+      <div class="nav-sub" data-tab="tab-24" data-sec="sec-24-day">Daily &amp; Hourly Patterns</div>
+      <div class="nav-sub" data-tab="tab-24" data-sec="sec-24-peak">Peak Hours</div>
+    </div>
+  </div>
+
+  <div class="nav-group" style="margin-top:8px">
+    <div class="nav-tab" data-tab="tab-cmp">
+      <span class="tab-dot dot-cmp"></span>Year-over-Year Comparison
+    </div>
+    <div class="nav-section" id="sub-cmp" style="display:none">
+      <div class="nav-sub" data-tab="tab-cmp" data-sec="sec-cmp-intro">Overview</div>
+      <div class="nav-sub" data-tab="tab-cmp" data-sec="sec-cmp-volume">Request Volume</div>
+      <div class="nav-sub" data-tab="tab-cmp" data-sec="sec-cmp-type">Complaint Types</div>
+      <div class="nav-sub" data-tab="tab-cmp" data-sec="sec-cmp-hour">Hourly Patterns</div>
+    </div>
+  </div>
+</div>
+</nav>
+
+<!-- ═══════════════════════════ MAIN WRAP ═══════════════════════════ -->
+<div id="main-wrap">
+
+<!-- ── GLOBAL FILTER BAR ── -->
+<div id="filter-bar">
+  <label>Park Location</label>
+  <select id="flt-park">
+    <option value="all">All Parks</option>
+    <option>MacArthur Park</option>
+    <option>Seoul International Park</option>
+    <option>Echo Park</option>
+    <option>Jackie Tatum Harvard Recreation Center</option>
+    <option>Venice Beach Recreation Center</option>
+    <option>Whitsett Fields</option>
+    <option>South Park Recreation Center</option>
+    <option>Lanark Recreation Center</option>
+    <option>Stoner Recreation Center</option>
+    <option>Green Meadows Recreation Center</option>
+    <option>El Sereno Recreation Center</option>
+    <option>Northridge Recreation Center</option>
+    <option>Sylmar Recreation Center</option>
+    <option>Sheldon-Arleta Park</option>
+    <option>Westwood Recreation Center</option>
+    <option>Wilmington Recreation Center</option>
+    <option>Sycamore Grove</option>
+    <option>Ken Malloy Harbor Regional Park</option>
+    <option>Hansen Dam Pool</option>
+    <option>Cheviot Hills Recreation Center</option>
+  </select>
+  <label>Day of Event</label>
+  <select id="flt-day">
+    <option value="all">All Days</option>
+    <option value="Day Before">Day Before</option>
+    <option value="Event Day">Event Day</option>
+    <option value="Day After">Day After</option>
+  </select>
+  <button class="filter-reset" id="flt-reset">Reset Filters</button>
+  <span class="filter-count" id="flt-count"></span>
+</div>
+
+<!-- ══════════════════════ TAB: 2026 ══════════════════════ -->
+<div class="tab-page active" id="tab-26">
+
+  <div class="section hero" id="sec-26-intro">
+    <div class="year-badge badge-26">2026 Event Year</div>
+    <h2>Kick it in the Park — 311 Request Analysis Dashboard</h2>
+    <p>This dashboard analyzes 311 requests for the <strong style="color:#e2e8f0">Kick it in the Park 2026</strong> event series. The data covers the event day, one day before, and one day after each event to measure the collective impact on service requests. The timeframe spans <strong style="color:#e2e8f0">June 10 – July 20, 2026</strong> (40 days), limited to a 0.25-mile radius around each event location. Data was joined and cleaned using Python.</p>
+    <div class="stat-row" style="margin-top:32px;justify-content:center">
+      <div class="stat-card"><div class="num num-26">3,125</div><div class="lbl">Total Requests</div></div>
+      <div class="stat-card"><div class="num num-26">20</div><div class="lbl">Park Locations</div></div>
+      <div class="stat-card"><div class="num num-26">40</div><div class="lbl">Days Covered</div></div>
+      <div class="stat-card"><div class="num num-26">46</div><div class="lbl">Complaint Types</div></div>
+      <div class="stat-card"><div class="num num-26">1,283</div><div class="lbl">Day-After Requests</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-26-cat">
+    <div class="section-header"><h3>Complaint Category</h3><p>Overall top complaint categories and breakdown by park location</p></div>
+    <div class="card">
+      <h4>Highest Complaint Category — Overall</h4>
+      <div id="c26-overall" class="chart-lg"></div>
+      <p class="insight">Of the total <strong>3,125 requests</strong>, <strong>Graffiti Removal</strong> is the most prominent at 1,636 (52.4%), followed by <strong>Illegal Dumping Item Pickup</strong> (371), <strong>Item Pickups</strong> (265), and <strong>Homeless Encampment</strong> (254). The majority focus on beautification/aesthetic or cleaning services.</p>
+    </div>
+    <div class="card">
+      <h4>Highest Complaint Category by Each Park</h4>
+      <div id="c26-park-top" class="chart-lg"></div>
+      <p class="insight">While Graffiti Removal dominates numerically, the most <em>common</em> top complaint across park locations is <strong>Illegal Dumping Item Pickup</strong> — appearing at the majority of venues — whereas Graffiti is concentrated at MacArthur Park and Echo Park.</p>
+    </div>
+  </div>
+
+  <div class="section" id="sec-26-count">
+    <div class="section-header"><h3>Complaint Count</h3><p>Total complaint quantity for each park</p></div>
+    <div class="card">
+      <h4>Total Complaint Quantity for Each Park</h4>
+      <div id="c26-park-total" class="chart-lg"></div>
+      <p class="insight"><strong>MacArthur Park</strong> accounts for 1,861 requests (59.6% of all), driven heavily by Graffiti Removal. Excluding MacArthur, <strong>Seoul International Park</strong> (272) and <strong>Echo Park</strong> (213) are next highest.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Complaint Breakdown by Park (excl. MacArthur)</h4>
+        <div id="c26-stacked" class="chart-lg"></div>
+      </div>
+      <div class="card">
+        <h4>All Complaint Categories</h4>
+        <div style="margin-bottom:8px">
+          <label for="tbl-date-filter" style="font-size:12px;color:#94a3b8;margin-right:6px">Filter by date:</label>
+          <select id="tbl-date-filter" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:3px 8px;font-size:12px;cursor:pointer">
+            <option value="">All dates</option>
+            <option value="2026-06-10">2026-06-10</option>
+            <option value="2026-06-11">2026-06-11</option>
+            <option value="2026-06-12">2026-06-12</option>
+            <option value="2026-06-13">2026-06-13</option>
+            <option value="2026-06-14">2026-06-14</option>
+            <option value="2026-06-15">2026-06-15</option>
+            <option value="2026-06-16">2026-06-16</option>
+            <option value="2026-06-17">2026-06-17</option>
+            <option value="2026-06-18">2026-06-18</option>
+            <option value="2026-06-19">2026-06-19</option>
+            <option value="2026-06-20">2026-06-20</option>
+            <option value="2026-06-21">2026-06-21</option>
+            <option value="2026-06-22">2026-06-22</option>
+            <option value="2026-06-23">2026-06-23</option>
+            <option value="2026-06-24">2026-06-24</option>
+            <option value="2026-06-25">2026-06-25</option>
+            <option value="2026-06-26">2026-06-26</option>
+            <option value="2026-06-27">2026-06-27</option>
+            <option value="2026-06-28">2026-06-28</option>
+            <option value="2026-06-29">2026-06-29</option>
+            <option value="2026-06-30">2026-06-30</option>
+            <option value="2026-07-01">2026-07-01</option>
+            <option value="2026-07-02">2026-07-02</option>
+            <option value="2026-07-03">2026-07-03</option>
+            <option value="2026-07-04">2026-07-04</option>
+            <option value="2026-07-05">2026-07-05</option>
+            <option value="2026-07-06">2026-07-06</option>
+            <option value="2026-07-07">2026-07-07</option>
+            <option value="2026-07-08">2026-07-08</option>
+            <option value="2026-07-09">2026-07-09</option>
+            <option value="2026-07-10">2026-07-10</option>
+            <option value="2026-07-11">2026-07-11</option>
+            <option value="2026-07-12">2026-07-12</option>
+            <option value="2026-07-13">2026-07-13</option>
+            <option value="2026-07-14">2026-07-14</option>
+            <option value="2026-07-15">2026-07-15</option>
+            <option value="2026-07-16">2026-07-16</option>
+            <option value="2026-07-17">2026-07-17</option>
+            <option value="2026-07-18">2026-07-18</option>
+            <option value="2026-07-19">2026-07-19</option>
+            <option value="2026-07-20">2026-07-20</option>
+          </select>
+        </div>
+        <table><thead><tr><th>Type</th><th>Count</th><th>Share</th></tr></thead>
+        <tbody id="tbl-26"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-26-day">
+    <div class="section-header"><h3>Day Categorization and Mode of Contact</h3><p>Nature of complaints relative to the event day</p></div>
+    <div class="card">
+      <h4>Nature of Complaints by Day Type</h4>
+      <div id="c26-day-nature" class="chart-lg"></div>
+      <p class="insight">The <strong>Day After</strong> received the highest complaints overall (1,283), particularly Graffiti Removal (875). The <strong>Event Day</strong> sees a spike in <strong>Homeless Encampment</strong> requests (173 vs 50 Day After). The major mode of contact was <strong>Self Service</strong> (80.6%).</p>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h4>Mode of Contact</h4><div id="c26-mode" class="chart-sm"></div></div>
+      <div class="card">
+        <h4>Total Complaints by Day Type</h4>
+        <div id="c26-day-totals" class="chart-sm"></div>
+        <p class="insight">Day After: 1,283 &nbsp;|&nbsp; Event Day: 1,016 &nbsp;|&nbsp; Day Before: 826</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-26-profile">
+    <div class="section-header"><h3>Who is Requesting the Services?</h3><p>Requestor profile inferred from Google Maps building type tags</p></div>
+    <div class="grid-3">
+      <div>
+        <div class="card"><h4>Complaint Count by Inferred Building Type</h4><div id="c26-bt-pie" class="chart-sm"></div></div>
+        <div class="card"><h4>Building Type by Top Complaint Category</h4><div id="c26-bt-bar" class="chart-lg"></div></div>
+      </div>
+      <div class="card" style="font-size:13px;color:#64748b;line-height:1.8">
+        <h4 style="color:#e2e8f0;margin-bottom:12px">Methodology</h4>
+        <p>These visualizations match the <strong style="color:#cbd5e1">locator_gis_returned_address</strong> column with Google Maps Geocoding API metadata (<em>google_raw_tags</em>), categorizing each location as Residential Building, Park/Public Facility, Other/Street, or Unclassified.</p><br/>
+        <p>Since the complainant's home address is unavailable, this is the closest proxy for understanding <strong style="color:#cbd5e1">who</strong> is filing the request — a resident nearby, or an event attendee at the park.</p><br/>
+        <p><strong style="color:#cbd5e1">Key insight:</strong> Graffiti Removal is overwhelmingly tied to <strong style="color:#cbd5e1">Park / Public Facility</strong> (1,283 of 1,636), while Illegal Dumping Item Pickup is predominantly <strong style="color:#cbd5e1">Residential Building</strong> (171 of 371). Homeless Encampment clusters under <strong style="color:#cbd5e1">Other / Street Property</strong> (99) and <strong style="color:#cbd5e1">Unclassified</strong> (86).</p>
+      </div>
+    </div>
+    <div class="card">
+      <h4>Inferred Building Type by Park Location</h4>
+      <div id="c26-park-bt" class="chart-lg"></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-26-peak">
+    <div class="section-header"><h3>Peak Hours</h3><p>Which hour sees the most complaints, by day category?</p></div>
+    <div class="card">
+      <h4>Hourly Complaint Count by Day Type</h4>
+      <div id="c26-hourly" class="chart-lg"></div>
+      <p class="insight"><strong>Event Day</strong> peaks at <strong>12:00–1:00pm</strong>. <strong>Day After</strong> shows a bimodal pattern: 11am–1pm and 8–9pm. <strong>Day Before</strong> peaks at 2–3pm. Note: removing MacArthur Park from the dataset shifts these patterns significantly.</p>
+    </div>
+    <div class="card">
+      <h4>Peak Hour Heat Map (Day Type × Hour)</h4>
+      <div id="c26-heatmap" class="chart-lg"></div>
+      <p class="insight"><strong>Event Day</strong> peaks sharply at <strong>12:00pm</strong> (195 requests). <strong>Day After</strong> shows a bimodal pattern — morning peak at 11am–1pm, then a strong <strong>8–9pm evening spike</strong> (132–113) from delayed resident reporting. <strong>Day Before</strong> peaks at <strong>2:00pm</strong> (109 requests).</p>
+    </div>
+  </div>
+
+  <footer><p>2026 Data: LA 311 — Kick it in the Park Event Series &nbsp;|&nbsp; June 10 – July 20, 2026 &nbsp;|&nbsp; 0.25-mile radius per event location</p><p style="margin-top:4px">Made with IBM Bob</p></footer>
+</div><!-- /tab-26 -->
+
+
+<!-- ══════════════════════ TAB: 2025 ══════════════════════ -->
+<div class="tab-page" id="tab-25">
+
+  <div class="section hero hero-25" id="sec-25-intro">
+    <div class="year-badge badge-25">2025 Baseline Year — Bounding Box Matched</div>
+    <h2>2025 311 Request Analysis — Same Locations, Same Period</h2>
+    <p>In order to get a better understanding of the <strong style="color:#e2e8f0">impact of the Kick it in the Park 2026 event series</strong>, we are analyzing 311 service requests for the <strong style="color:#e2e8f0">exact same 20 park locations</strong> during the <strong style="color:#e2e8f0">exact same calendar period</strong> (June 10 – July 20) one year prior, in 2025 — when no Kick it in the Park events took place. <strong style="color:#fbbf24">Why only 212 requests?</strong> The raw 2025 data contains 6,288 records, but the 2026 data was filtered using a precise <strong style="color:#e2e8f0">per-park bounding box</strong> (±0.25 mi lat/lon from center). Applying that same bounding box to 2025 yields 212 records — all Graffiti Removal by city field crews. The remaining ~6,076 are real requests that simply occurred outside the event radius.</p>
+    <div class="stat-row" style="margin-top:32px;justify-content:center">
+      <div class="stat-card"><div class="num num-25">212</div><div class="lbl">Requests (bbox-matched)</div></div>
+      <div class="stat-card"><div class="num num-25">13</div><div class="lbl">Parks w/ Data</div></div>
+      <div class="stat-card"><div class="num num-25">40</div><div class="lbl">Days Covered</div></div>
+      <div class="stat-card"><div class="num num-25">1</div><div class="lbl">Complaint Type</div></div>
+      <div class="stat-card"><div class="num num-25">100%</div><div class="lbl">Graffiti Removal</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-25-cat">
+    <div class="section-header"><h3>Complaint Category — 2025 (Bbox-Matched)</h3><p>All 212 within-bbox requests are Graffiti Removal</p></div>
+    <div class="card">
+      <h4>Complaint Types — 2025 (212 bbox-matched requests)</h4>
+      <div id="c25-overall" class="chart-md"></div>
+      <p class="insight">Filtered to the same ±0.25 mi bounding box used for 2026, the 2025 data contains <strong>212 requests — all Graffiti Removal</strong>, 100% filed via <strong>Driver Self Report</strong> (city field officers). This confirms that within the immediate park vicinity in 2025, activity was exclusively proactive graffiti logging by crews with zero resident-initiated requests of any kind. Every additional complaint type seen in 2026 was generated by the events.</p>
+    </div>
+    <div class="card">
+      <h4>Requests by Park — 2025 (Bbox-Matched)</h4>
+      <div id="c25-park-top" class="chart-lg"></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-25-count">
+    <div class="section-header"><h3>Complaint Count — 2025 (Bbox-Matched)</h3><p>Request volume per park within the matched bounding box</p></div>
+    <div class="card">
+      <h4>Total Complaint Quantity for Each Park — 2025</h4>
+      <div id="c25-park-total" class="chart-lg"></div>
+      <p class="insight"><strong>Venice Beach RC</strong> (92) and <strong>Jackie Tatum Harvard RC</strong> (40) lead the 2025 baseline. Critically, <strong>MacArthur Park, Seoul International Park, Whitsett Fields, Northridge RC, Sheldon-Arleta Park, Sycamore Grove, and Hansen Dam Pool had zero requests</strong> within the event bbox in 2025, making the 2026 increases for those locations entirely event-driven.</p>
+    </div>
+  </div>
+
+  <div class="section" id="sec-25-day">
+    <div class="section-header"><h3>Daily &amp; Hourly Patterns — 2025 (Bbox-Matched)</h3><p>When are requests filed in the baseline year?</p></div>
+    <div class="card">
+      <h4>Requests by Day of Week — 2025</h4>
+      <div id="c25-dow" class="chart-md"></div>
+      <p class="insight"><strong>Wednesday</strong> (55) leads, consistent with city crew schedules, followed by Thursday (30) and Friday (30). Saturday (35) is notably active — likely a weekend patrol push. All activity is within normal working patterns.</p>
+    </div>
+    <div class="card">
+      <h4>Mode of Contact — 2025</h4>
+      <div id="c25-mode" class="chart-sm"></div>
+      <p class="insight">All 212 requests are <strong>Driver Self Report</strong> — 100% city field officers logging graffiti. Zero resident-initiated requests within the park bbox in 2025.</p>
+    </div>
+  </div>
+
+  <div class="section" id="sec-25-profile">
+    <div class="section-header"><h3>Who is Requesting the Services? — 2025</h3><p>Inferred building type from Google Maps tags on the graffiti location address</p></div>
+    <div class="grid-3">
+      <div>
+        <div class="card">
+          <h4>Complaint Count by Inferred Building Type — 2025 (Bbox)</h4>
+          <div id="c25-bt-pie" class="chart-sm"></div>
+          <p class="insight">Within the event bounding box, the 212 graffiti removals split almost evenly between <strong>Residential Building</strong> (111 — 52%) and <strong>Other / Street Property</strong> (100 — 47%), with 1 Commercial. This means city crews were removing graffiti from both residential walls/fences and street infrastructure at roughly equal rates.</p>
+        </div>
+        <div class="card">
+          <h4>Inferred Building Type by Park — 2025 (Bbox)</h4>
+          <div id="c25-bt-park" class="chart-lg"></div>
+        </div>
+      </div>
+      <div class="card" style="font-size:13px;color:#64748b;line-height:1.8">
+        <h4 style="color:#e2e8f0;margin-bottom:12px">Methodology &amp; 2025 Context</h4>
+        <p>As with the 2026 analysis, building type was inferred by matching the <strong style="color:#cbd5e1">locator_gis_returned_address</strong> to Google Maps Geocoding API metadata (<em>google_raw_tags</em>). Raw tags were categorized into <strong style="color:#cbd5e1">Residential Building, Other/Street Property,</strong> or <strong style="color:#cbd5e1">Commercial Building</strong>.</p>
+        <br/>
+        <p>Note that the 2025 dataset has <strong style="color:#cbd5e1">only 3 building types</strong> vs 2026's 5 — there are no <em>Park / Public Facility</em> or <em>Unclassified</em> entries. This is consistent with the data being entirely <strong style="color:#cbd5e1">Driver Self Report</strong>: city crews log graffiti at street addresses, not at park facility coordinates, so the Google tags return residential or street-type results.</p>
+        <br/>
+        <p><strong style="color:#cbd5e1">Key contrast with 2026:</strong> In 2026, <em>Park / Public Facility</em> was the dominant building type (367 records — driven by MacArthur Park event attendees). In 2025, that category is completely absent, confirming that near-park activity in 2025 was crew-driven street-level work, not event-driven park usage.</p>
+        <br/>
+        <p>The full 6,288 raw 2025 dataset shows the same pattern at scale: 3,626 Residential (57.7%), 2,659 Other/Street (42.3%), 3 Commercial — no park facility type at all.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-25-peak">
+    <div class="section-header"><h3>Peak Hours — 2025 (Bbox-Matched)</h3><p>Hourly complaint patterns in the corrected baseline</p></div>
+    <div class="card">
+      <h4>Hourly Complaint Count — 2025 (Bbox-Matched)</h4>
+      <div id="c25-hourly" class="chart-lg"></div>
+      <p class="insight">Requests cluster in business hours (9am–noon peak), consistent with field crew shifts. A secondary spike at 8–9pm on Wednesdays likely reflects a specific patrol route. No requests between midnight and 6am.</p>
+    </div>
+    <div class="card">
+      <h4>Peak Hour Heat Map — 2025 (Day of Week × Hour)</h4>
+      <div id="c25-heatmap" class="chart-lg"></div>
+    </div>
+  </div>
+
+  <footer><p>2025 Baseline Data: LA 311 — 212 bbox-matched requests &nbsp;|&nbsp; June 10 – July 20, 2025 &nbsp;|&nbsp; Same ±0.25 mi bounding box as 2026</p><p style="margin-top:4px">Made with IBM Bob</p></footer>
+</div><!-- /tab-25 -->
+
+
+<!-- ══════════════════════ TAB: COMPARISON ══════════════════════ -->
+<div class="tab-page" id="tab-cmp">
+
+  <div class="section hero hero-cmp" id="sec-cmp-intro">
+    <div class="year-badge badge-cmp">Year-over-Year Comparison — 2024 · 2025 · 2026</div>
+    <h2>Three-Year Comparison: Same Parks, Same Dates, Same Radius</h2>
+    <p>All three years use the <strong style="color:#e2e8f0">identical ±0.25 mi bounding box</strong> per park and the <strong style="color:#e2e8f0">same Jun 10 – Jul 20 window</strong>. Data for each year comes from the official LA 311 portal for that year. <strong style="color:#fbbf24">Note on 2025:</strong> the 2025 MyLA311 dataset for this period captured almost exclusively city graffiti crew logs (Driver Self Report) — only 212 requests hit the park bboxes. This is a documented characteristic of the 2025 data pipeline, not a filtering issue. <strong style="color:#fb923c">2024</strong> is therefore the more meaningful pre-event resident baseline (3,742 requests).</p>
+    <div class="stat-row" style="margin-top:28px;justify-content:center">
+      <div class="stat-card"><div class="num num-24">3,742</div><div class="lbl">2024 Requests</div></div>
+      <div class="stat-card"><div class="num num-25">212</div><div class="lbl">2025 Requests</div></div>
+      <div class="stat-card"><div class="num num-26">3,125</div><div class="lbl">2026 Requests</div></div>
+      <div class="stat-card"><div class="num num-cmp">−16%</div><div class="lbl">2024 → 2026 Change</div></div>
+      <div class="stat-card"><div class="num num-cmp">11 → 46</div><div class="lbl">Complaint Types</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-cmp-volume">
+    <div class="section-header"><h3>Request Volume by Park</h3><p>All three years side by side — same ±0.25 mi bbox</p></div>
+    <div class="card">
+      <h4>Total Requests per Park — 2024 vs 2025 vs 2026</h4>
+      <div id="c-cmp-parks" class="chart-lg"></div>
+      <p class="insight"><strong>MacArthur Park</strong> doubles from 842 (2024) to 1,861 (2026) — the strongest absolute gain. <strong>Echo Park</strong> drops from 499 → 213, and <strong>Venice Beach RC</strong> from 173 → 77. <strong>Green Meadows RC</strong> (276 → 44) and <strong>South Park RC</strong> (250 → 60) also decline, suggesting the 2026 Salesforce system captures fewer bulk/graffiti crew requests compared to the 2024 legacy system. 7 parks had zero 2025 data; all had 2024 activity.</p>
+    </div>
+    <div class="card">
+      <h4>% Change in Requests: 2024 → 2026 (the meaningful baseline comparison)</h4>
+      <div id="c-cmp-pct" class="chart-lg"></div>
+      <p class="insight">Comparing 2024 (resident baseline) to 2026 (event year): <strong>MacArthur Park +121%</strong>, <strong>Whitsett Fields +23%</strong>, <strong>Stoner RC −27%</strong>. Parks that increased in 2026 relative to 2024 signal genuine event-driven uplift; those that decreased likely reflect the shift from the legacy 311 system (which captured Bulky Items and crew logs) to the new Salesforce platform (which skews toward resident self-service).</p>
+    </div>
+  </div>
+
+  <div class="section" id="sec-cmp-type">
+    <div class="section-header"><h3>What Changed — Complaint Type Shifts Across Three Years</h3></div>
+    <div class="card">
+      <h4>Top Complaint Types — 2024 vs 2025 vs 2026</h4>
+      <div id="c-cmp-types" class="chart-lg"></div>
+      <p class="insight">The most striking shift: <strong>Bulky Items</strong> was the #1 complaint in 2024 (1,376) and essentially disappears in 2026 (0) — it was renamed/recategorised under the new Salesforce 311 system. <strong>Graffiti Removal</strong> surges from 1,059 (2024) to 1,636 (2026). Entirely new 2026 categories — <strong>Dockless Mobility Enforcement</strong>, <strong>Item Pickups</strong>, <strong>Information-Only</strong> — did not exist in prior years, confirming that the event series and the new platform together reshaped the complaint landscape.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:18px">
+      <div class="card">
+        <h4 style="color:#fb923c">2024 — Type Share</h4>
+        <div id="c-cmp-pie24" class="chart-sm"></div>
+      </div>
+      <div class="card">
+        <h4 style="color:#34d399">2025 — Type Share</h4>
+        <div id="c-cmp-pie25" class="chart-sm"></div>
+      </div>
+      <div class="card">
+        <h4 style="color:#60a5fa">2026 — Type Share</h4>
+        <div id="c-cmp-pie26" class="chart-sm"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-cmp-hour">
+    <div class="section-header"><h3>Hourly Filing Patterns &amp; Mode of Contact</h3><p>Three behaviorally distinct populations</p></div>
+    <div class="card">
+      <h4>Hourly Distribution — All Three Years (Normalized %)</h4>
+      <div id="c-cmp-hourly" class="chart-lg"></div>
+      <p class="insight"><strong>2024</strong> (orange): broad afternoon peak 3–5pm — classic resident/crew mixed pattern. <strong>2025</strong> (green, dashed): narrow crew work-shift, peaks 9–11am, silent evenings. <strong>2026</strong> (blue): sharp noon spike on event days, plus a distinct <strong>8–9pm evening surge</strong> unique to the event year — residents filing after watching matches. These three curves belong to three different behavioral populations.</p>
+    </div>
+    <div class="card">
+      <h4>Mode of Contact — All Three Years</h4>
+      <div id="c-cmp-mode" class="chart-lg"></div>
+      <p class="insight"><strong>2024</strong>: resident-led — 45% Mobile App, 29% Call, 17% Self Service, 9% Driver Self Report. <strong>2025</strong>: almost entirely Driver Self Report (99.5%) — the resident channels generated near-zero activity in this footprint. <strong>2026</strong>: 81% Self Service / web, 19% Call — residents engaged directly through the new platform, with virtually no Driver Self Report, showing the events activated a different reporting population.</p>
+    </div>
+  </div>
+
+  <footer><p>Year-over-Year: 2024 (3,742) · 2025 (212) · 2026 (3,125) &nbsp;|&nbsp; Jun 10 – Jul 20 &nbsp;|&nbsp; ±0.25 mi bbox per park &nbsp;|&nbsp; LA 311 Open Data</p><p style="margin-top:4px">Made with IBM Bob</p></footer>
+</div><!-- /tab-cmp -->
+
+<!-- ══════════════════════ TAB: 2024 ══════════════════════ -->
+<div class="tab-page" id="tab-24">
+
+  <div class="section hero" style="background:linear-gradient(135deg,#140800 0%,#2c1000 100%)" id="sec-24-intro">
+    <div class="year-badge" style="background:#431407;color:#fb923c;border:1px solid #7c2d12">2024 Baseline Year — Same Locations &amp; Dates</div>
+    <h2 style="color:#f1f5f9">2024 311 Request Analysis — Pre-Event Baseline</h2>
+    <p>To provide a meaningful baseline for the <strong style="color:#e2e8f0">Kick it in the Park 2026</strong> analysis, this tab presents 311 service requests for the <strong style="color:#e2e8f0">exact same 20 park locations</strong> and <strong style="color:#e2e8f0">exact same calendar window</strong> (June 10 – July 20) in <strong style="color:#e2e8f0">2024</strong> — two years before the event series, using the identical ±0.25-mile bounding box filter. Unlike 2025 (which captured only city graffiti crew logs), the 2024 dataset is from the <strong style="color:#fb923c">MyLA311 resident portal</strong> and reflects genuine resident-initiated activity. This makes 2024 the more appropriate pre-event baseline for comparison with 2026.</p>
+    <div class="stat-row" style="margin-top:32px;justify-content:center">
+      <div class="stat-card"><div class="num num-24">3,742</div><div class="lbl">Total Requests</div></div>
+      <div class="stat-card"><div class="num num-24">20</div><div class="lbl">Park Locations</div></div>
+      <div class="stat-card"><div class="num num-24">40</div><div class="lbl">Days Covered</div></div>
+      <div class="stat-card"><div class="num num-24">11</div><div class="lbl">Complaint Types</div></div>
+      <div class="stat-card"><div class="num num-24">45%</div><div class="lbl">Mobile App Filed</div></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-24-cat">
+    <div class="section-header"><h3>Complaint Category — 2024</h3><p>What were residents reporting in the same locations, same dates, two years prior?</p></div>
+    <div class="card">
+      <h4>Highest Complaint Category — Overall (2024)</h4>
+      <div id="c24-overall" class="chart-lg"></div>
+      <p class="insight">In 2024, <strong>Bulky Items</strong> (1,376 — 36.8%) is the top complaint, followed by <strong>Graffiti Removal</strong> (1,059 — 28.3%) and <strong>Homeless Encampment</strong> (615 — 16.4%). This is a typical summer resident pattern: bulk waste, street-level graffiti, and encampment clearance dominate. Note the absence of <strong>Dockless Mobility, Information-Only,</strong> and <strong>Item Pickups</strong> — all 2026-specific categories driven by the event infrastructure.</p>
+    </div>
+    <div class="card">
+      <h4>Highest Complaint Category by Each Park (2024)</h4>
+      <div id="c24-park-top" class="chart-lg"></div>
+      <p class="insight"><strong>MacArthur Park</strong> stands out with Homeless Encampment as top complaint (457), unlike all other parks where Bulky Items or Graffiti leads. <strong>Hansen Dam Pool</strong> shows Dead Animal Removal as its top complaint (2 of 4 total), reflecting its less urbanised setting.</p>
+    </div>
+  </div>
+
+  <div class="section" id="sec-24-count">
+    <div class="section-header"><h3>Complaint Count — 2024</h3><p>Request volume per park — same ±0.25mi bbox as 2026</p></div>
+    <div class="card">
+      <h4>Total Complaint Quantity for Each Park (2024)</h4>
+      <div id="c24-park-total" class="chart-lg"></div>
+      <p class="insight"><strong>MacArthur Park</strong> (842) and <strong>Echo Park</strong> (499) lead by a wide margin. Compared to 2026, <strong>Seoul International Park</strong> jumps from 434 to 272 (a decrease), while parks like <strong>Stoner RC</strong> and <strong>Lanark RC</strong> see large increases — suggesting the events activated resident reporting in areas that had moderate baseline activity.</p>
+    </div>
+    <div class="card">
+      <h4>Complaint Breakdown by Park (2024)</h4>
+      <div id="c24-stacked" class="chart-lg"></div>
+      <p class="insight">Bulky Items dominate across nearly every park in 2024 — a pattern entirely absent in the 2026 dataset, where that category was replaced by <strong>Item Pickups</strong> and <strong>Information-Only</strong> under the new Salesforce-based 311 system.</p>
+    </div>
+  </div>
+
+  <div class="section" id="sec-24-day">
+    <div class="section-header"><h3>Daily &amp; Hourly Patterns — 2024</h3><p>When are requests filed in a normal (non-event) year?</p></div>
+    <div class="card">
+      <h4>Hourly Complaint Count — 2024 (All Days)</h4>
+      <div id="c24-hourly" class="chart-lg"></div>
+      <p class="insight">The 2024 hourly curve shows a broad afternoon peak (3–5pm) with steady morning activity from 9am. There is no sharp noon spike seen in 2026's Event Day pattern — instead, demand is spread across the working day. The late-evening 8–9pm spike seen in 2026 is absent here.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Requests by Day of Week (2024)</h4>
+        <div id="c24-dow" class="chart-sm"></div>
+        <p class="insight"><strong>Tuesday</strong> sees the highest requests (799), with a midweek peak typical of resident service reporting. Weekend activity drops sharply, unlike 2026 where events fell on both weekdays and weekends.</p>
+      </div>
+      <div class="card">
+        <h4>Mode of Contact (2024)</h4>
+        <div id="c24-mode" class="chart-sm"></div>
+        <p class="insight">In 2024, <strong>45.1% used the Mobile App</strong>, 29.0% called, and 16.7% used Self Service (web). Only 8.8% are Driver Self Report — crews logging graffiti. This is a resident-driven dataset with diverse reporting channels, in sharp contrast to 2025's 99.5% Driver Self Report.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-24-peak">
+    <div class="section-header"><h3>Peak Hours — 2024</h3><p>Hour × Day-of-Week heat map for the baseline year</p></div>
+    <div class="card">
+      <h4>Peak Hour Heat Map — Day of Week × Hour (2024)</h4>
+      <div id="c24-heatmap" class="chart-lg"></div>
+      <p class="insight"><strong>Tuesday and Thursday afternoons (3–4pm)</strong> are the hottest slots in 2024. <strong>Wednesday at 4pm</strong> also shows a spike. The pattern is a typical resident-driven midweek afternoon peak — very different from 2026's event-day noon spike and day-after evening spike.</p>
+    </div>
+  </div>
+
+  <footer><p>2024 Data: LA MyLA311 (dataset b7dx-7gc3) &nbsp;|&nbsp; June 10 – July 20, 2024 &nbsp;|&nbsp; ±0.25-mile bbox per park — same filter as 2026</p><p style="margin-top:4px">Made with IBM Bob</p></footer>
+</div><!-- /tab-24 -->
+
+</div><!-- /main-wrap -->
+
+<script>
+// ════════════════════════════════════════
+// NAV & TAB LOGIC
+// ════════════════════════════════════════
+const sidebar = document.getElementById('sidebar');
+const toggleBtn = document.getElementById('toggle-btn');
+const mainWrap = document.getElementById('main-wrap');
+const allChartInstances = [];
+
+let sidebarOpen = true;
+toggleBtn.addEventListener('click', () => {
+  sidebarOpen = !sidebarOpen;
+  sidebar.classList.toggle('collapsed', !sidebarOpen);
+  document.body.classList.toggle('sidebar-collapsed', !sidebarOpen);
+  setTimeout(() => allChartInstances.forEach(c => { try { c.resize(); } catch(e){} }), 290);
+});
+
+function showTab(tabId) {
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+  ['sub-26','sub-25','sub-24','sub-cmp'].forEach(id => document.getElementById(id).style.display='none');
+  const subMap = {'tab-26':'sub-26','tab-25':'sub-25','tab-24':'sub-24','tab-cmp':'sub-cmp'};
+  if(subMap[tabId]) document.getElementById(subMap[tabId]).style.display='block';
+  mainWrap.scrollTo({top:0});
+  document.querySelectorAll('.nav-sub').forEach(s => s.classList.remove('active'));
+  const firstSub = document.querySelector(`#${subMap[tabId]} .nav-sub`);
+  if(firstSub) firstSub.classList.add('active');
+  setTimeout(() => allChartInstances.forEach(c => { try { c.resize(); } catch(e){} }), 50);
+}
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => showTab(tab.dataset.tab));
+});
+
+document.querySelectorAll('.nav-sub').forEach(sub => {
+  sub.addEventListener('click', () => {
+    showTab(sub.dataset.tab);
+    const target = document.getElementById(sub.dataset.sec);
+    if(target) setTimeout(() => mainWrap.scrollTo({top: target.offsetTop, behavior:'smooth'}), 30);
+    document.querySelectorAll('.nav-sub').forEach(s => s.classList.remove('active'));
+    sub.classList.add('active');
+  });
+});
+
+mainWrap.addEventListener('scroll', () => {
+  const activeTab = document.querySelector('.tab-page.active');
+  if(!activeTab) return;
+  const secs = activeTab.querySelectorAll('[id^="sec-"]');
+  let current = '';
+  secs.forEach(s => { if(s.getBoundingClientRect().top <= 90) current = s.id; });
+  document.querySelectorAll('.nav-sub').forEach(s => s.classList.toggle('active', s.dataset.sec === current));
+}, {passive:true});
+
+// ════════════════════════════════════════
+// SHARED CHART HELPERS
+// ════════════════════════════════════════
+const BG='#1e293b', AXIS='#334155', LABEL='#64748b', GRID='#1e293b';
+function base(){ return {backgroundColor:'transparent',textStyle:{color:LABEL},tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},legend:{textStyle:{color:LABEL}}}; }
+function mk(id){ const ec = echarts.init(document.getElementById(id)); allChartInstances.push(ec); return ec; }
+
+// ════════════════════════════════════════
+// 2026 CHARTS
+// ════════════════════════════════════════
+const ct26 = [["Graffiti Removal",1636],["Illegal Dumping Item Pickup",371],["Item Pickups",265],["Homeless Encampment",254],["Information-Only",222],["Street Sweeping",73],["Service Not Complete",53],["Dockless Mobility Enforcement",50],["Dead Animal Removal",23],["Street Pavement Issues",20],["Landscape Maintenance",18],["Illegal Sign Removal, News Rack Issues",9],["Tree Emergency",9],["Program Research",9],["Bus Stop Furniture",9],["General Street Inspection",8],["Report a Sidewalk Problem",7],["Traffic Safety",7],["Streetlight Repair Services",7],["Public Street Receptacles",7],["Barricade Removal",5],["Other",5],["Park Cleanliness, Trash and Ground Maintenance",5],["Street Tree Inspection",5],["Obstructions",5],["Park Amenity and Facilities Repair",5],["Parking Issues",4],["Animal Complaint/Violation",4],["Curb Issues",3],["Watershed Protection Division (WPD) Enforcement",3],["Illegal Auto Repair or Construction, and Leaf Blower Violations",3],["Animal Loose",3],["Traffic Sign Issues",2],["Animal Confined",2],["Tree Obstruction",2],["Sidewalk Repair Access Request Program",2],["Trees or Pests in the Park",1],["LADOT Council & Interagency Support",1],["Private Property Violation",1],["Illegal Activities (Non-Emergency)",1],["Flooding",1],["Accessible Bus Stop Issues",1],["Traffic Signal Issues",1],["Feedback",1],["Streetlight ADA Repair Services",1],["Bus Stop Parking Sign & Markings",1]];
+const DATE_CT_26 = {"2026-06-10":{"Illegal Dumping Item Pickup":7,"Information-Only":2,"Item Pickups":2,"Graffiti Removal":1,"Homeless Encampment":1},"2026-06-11":{"Illegal Dumping Item Pickup":14,"Graffiti Removal":4,"Information-Only":3,"Dead Animal Removal":2,"Service Not Complete":2,"Trees or Pests in the Park":1,"Street Pavement Issues":1,"Traffic Signal Issues":1,"Dockless Mobility Enforcement":1,"General Street Inspection":1,"Obstructions":1},"2026-06-12":{"Information-Only":18,"Illegal Dumping Item Pickup":9,"Item Pickups":9,"Graffiti Removal":6,"Illegal Sign Removal, News Rack Issues":3,"Report a Sidewalk Problem":1,"Obstructions":1},"2026-06-13":{"Illegal Dumping Item Pickup":9,"Graffiti Removal":6,"Item Pickups":4,"Information-Only":4,"Service Not Complete":3,"Streetlight Repair Services":2,"Street Pavement Issues":2,"Public Street Receptacles":1,"Traffic Safety":1},"2026-06-14":{"Graffiti Removal":223,"Item Pickups":11,"Illegal Dumping Item Pickup":11,"Streetlight Repair Services":2,"Homeless Encampment":1,"General Street Inspection":1,"Service Not Complete":1},"2026-06-15":{"Graffiti Removal":367,"Item Pickups":14,"Information-Only":10,"Illegal Dumping Item Pickup":9,"Landscape Maintenance":3,"Illegal Sign Removal, News Rack Issues":3,"Park Cleanliness, Trash and Ground Maintenance":2,"Tree Emergency":2,"Dead Animal Removal":1,"Barricade Removal":1,"Traffic Safety":1,"Homeless Encampment":1,"Feedback":1,"Street Pavement Issues":1},"2026-06-16":{"Graffiti Removal":768,"Illegal Dumping Item Pickup":13,"Information-Only":12,"Item Pickups":10,"Bus Stop Furniture":7,"Street Sweeping":7,"Homeless Encampment":6,"Service Not Complete":2,"Dockless Mobility Enforcement":1,"Landscape Maintenance":1,"Other":1,"Private Property Violation":1,"Illegal Activities (Non-Emergency)":1,"Parking Issues":1},"2026-06-17":{"Illegal Dumping Item Pickup":25,"Item Pickups":19,"Information-Only":11,"Graffiti Removal":11,"Service Not Complete":5,"Homeless Encampment":3,"General Street Inspection":3,"Animal Confined":1,"Street Tree Inspection":1,"Dockless Mobility Enforcement":1,"Obstructions":1,"Landscape Maintenance":1,"Public Street Receptacles":1,"Flooding":1,"Sidewalk Repair Access Request Program":1,"Tree Obstruction":1,"Illegal Sign Removal, News Rack Issues":1},"2026-06-18":{"Illegal Dumping Item Pickup":19,"Information-Only":13,"Item Pickups":9,"Service Not Complete":2,"Dead Animal Removal":2,"General Street Inspection":1,"Program Research":1,"Landscape Maintenance":1,"Illegal Auto Repair or Construction, and Leaf Blower Violations":1},"2026-06-19":{"Information-Only":5,"Service Not Complete":2,"Illegal Dumping Item Pickup":2,"Item Pickups":2,"Dead Animal Removal":1,"Homeless Encampment":1,"Park Cleanliness, Trash and Ground Maintenance":1,"Landscape Maintenance":1,"Graffiti Removal":1,"Tree Emergency":1,"Illegal Auto Repair or Construction, and Leaf Blower Violations":1},"2026-06-20":{"Item Pickups":4,"Illegal Dumping Item Pickup":3,"Information-Only":2,"Graffiti Removal":1,"Homeless Encampment":1,"Service Not Complete":1},"2026-06-21":{"Item Pickups":4,"Public Street Receptacles":3,"Illegal Dumping Item Pickup":2,"Graffiti Removal":2},"2026-06-22":{"Illegal Dumping Item Pickup":20,"Information-Only":9,"Item Pickups":8,"Service Not Complete":6,"Graffiti Removal":6,"Homeless Encampment":3,"Traffic Safety":2,"Street Pavement Issues":1,"Curb Issues":1,"Traffic Sign Issues":1,"Dead Animal Removal":1,"General Street Inspection":1,"Street Sweeping":1,"Tree Emergency":1,"Streetlight ADA Repair Services":1},"2026-06-23":{"Illegal Dumping Item Pickup":19,"Item Pickups":12,"Information-Only":11,"Homeless Encampment":2,"Program Research":2,"Tree Emergency":2,"Service Not Complete":2,"Graffiti Removal":2,"Landscape Maintenance":1,"Dead Animal Removal":1,"Public Street Receptacles":1,"Animal Loose":1,"Park Amenity and Facilities Repair":1},"2026-06-24":{"Graffiti Removal":69,"Street Sweeping":49,"Illegal Dumping Item Pickup":16,"Information-Only":7,"Item Pickups":7,"Homeless Encampment":5,"Service Not Complete":3,"Animal Complaint/Violation":2,"Barricade Removal":1,"Traffic Sign Issues":1,"Report a Sidewalk Problem":1},"2026-06-25":{"Homeless Encampment":153,"Graffiti Removal":30,"Street Sweeping":14,"Information-Only":10,"Illegal Dumping Item Pickup":8,"Item Pickups":3,"Animal Loose":2,"Park Cleanliness, Trash and Ground Maintenance":1,"Street Pavement Issues":1,"Report a Sidewalk Problem":1,"Service Not Complete":1},"2026-06-26":{"Graffiti Removal":66,"Homeless Encampment":29,"Information-Only":8,"Illegal Dumping Item Pickup":7,"Dockless Mobility Enforcement":3,"Barricade Removal":2,"Dead Animal Removal":1,"Item Pickups":1,"Illegal Sign Removal, News Rack Issues":1},"2026-06-27":{"Item Pickups":4,"Homeless Encampment":4,"Graffiti Removal":3,"Service Not Complete":2,"Dead Animal Removal":1,"Information-Only":1,"Illegal Dumping Item Pickup":1},"2026-06-28":{"Illegal Dumping Item Pickup":12,"Homeless Encampment":4,"Item Pickups":3,"Graffiti Removal":2,"Information-Only":1,"Parking Issues":1,"Landscape Maintenance":1,"Service Not Complete":1,"Street Tree Inspection":1,"Dead Animal Removal":1},"2026-06-29":{"Graffiti Removal":12,"Item Pickups":10,"Illegal Dumping Item Pickup":7,"Service Not Complete":5,"Homeless Encampment":5,"Information-Only":3,"Bus Stop Furniture":1,"Report a Sidewalk Problem":1,"Traffic Safety":1,"Bus Stop Parking Sign & Markings":1,"Program Research":1},"2026-06-30":{"Item Pickups":21,"Graffiti Removal":20,"Illegal Dumping Item Pickup":10,"Information-Only":5,"Obstructions":1},"2026-07-01":{"Dockless Mobility Enforcement":27,"Item Pickups":9,"Illegal Dumping Item Pickup":8,"Information-Only":7,"Graffiti Removal":4,"Service Not Complete":3,"Homeless Encampment":2,"Street Tree Inspection":1,"Tree Emergency":1,"Streetlight Repair Services":1,"Traffic Safety":1,"General Street Inspection":1,"Other":1,"Park Amenity and Facilities Repair":1},"2026-07-02":{"Illegal Dumping Item Pickup":14,"Information-Only":9,"Item Pickups":9,"Homeless Encampment":4,"Landscape Maintenance":4,"Service Not Complete":3,"Park Amenity and Facilities Repair":2,"Dead Animal Removal":1,"Graffiti Removal":1},"2026-07-03":{"Graffiti Removal":8,"Illegal Dumping Item Pickup":7,"Information-Only":3,"Item Pickups":3,"Service Not Complete":1,"Homeless Encampment":1},"2026-07-04":{"Illegal Dumping Item Pickup":4,"Dead Animal Removal":2,"Landscape Maintenance":1,"Accessible Bus Stop Issues":1,"Homeless Encampment":1,"Item Pickups":1},"2026-07-05":{"Illegal Dumping Item Pickup":5,"Item Pickups":4,"Animal Confined":1},"2026-07-06":{"Item Pickups":10,"Illegal Dumping Item Pickup":5,"Information-Only":3,"Dockless Mobility Enforcement":2,"Street Pavement Issues":1,"Dead Animal Removal":1,"Graffiti Removal":1,"Barricade Removal":1,"Homeless Encampment":1},"2026-07-07":{"Item Pickups":13,"Illegal Dumping Item Pickup":7,"Street Pavement Issues":3,"Landscape Maintenance":2,"Dead Animal Removal":2,"Information-Only":2,"Obstructions":1,"Graffiti Removal":1,"Watershed Protection Division (WPD) Enforcement":1,"Tree Obstruction":1,"Report a Sidewalk Problem":1,"Service Not Complete":1},"2026-07-08":{"Information-Only":15,"Illegal Dumping Item Pickup":14,"Item Pickups":5,"Animal Complaint/Violation":1,"Street Tree Inspection":1,"Graffiti Removal":1,"Watershed Protection Division (WPD) Enforcement":1,"Service Not Complete":1,"Street Sweeping":1,"Homeless Encampment":1,"Illegal Auto Repair or Construction, and Leaf Blower Violations":1,"Parking Issues":1},"2026-07-09":{"Illegal Dumping Item Pickup":13,"Item Pickups":8,"Information-Only":6,"Curb Issues":2,"Homeless Encampment":2,"Traffic Safety":1,"Tree Emergency":1,"Other":1,"Dead Animal Removal":1,"Graffiti Removal":1,"Streetlight Repair Services":1},"2026-07-10":{"Illegal Dumping Item Pickup":13,"Information-Only":12,"Item Pickups":7,"Homeless Encampment":7,"Graffiti Removal":2,"Dead Animal Removal":2,"Program Research":2,"Streetlight Repair Services":1,"Watershed Protection Division (WPD) Enforcement":1,"Service Not Complete":1,"Landscape Maintenance":1,"Street Pavement Issues":1},"2026-07-11":{"Homeless Encampment":6,"Dockless Mobility Enforcement":6,"Illegal Dumping Item Pickup":2,"Item Pickups":2,"Graffiti Removal":2,"Park Amenity and Facilities Repair":1,"Animal Complaint/Violation":1,"Service Not Complete":1},"2026-07-12":{"Item Pickups":4,"Illegal Dumping Item Pickup":1},"2026-07-13":{"Illegal Dumping Item Pickup":6,"Information-Only":4,"Item Pickups":3,"Graffiti Removal":3,"Dead Animal Removal":2,"LADOT Council & Interagency Support":1,"Program Research":1},"2026-07-14":{"Item Pickups":8,"Illegal Dumping Item Pickup":8,"Information-Only":5,"Graffiti Removal":3,"Service Not Complete":2,"Program Research":1,"Report a Sidewalk Problem":1,"Public Street Receptacles":1},"2026-07-15":{"Illegal Dumping Item Pickup":13,"Dockless Mobility Enforcement":9,"Information-Only":8,"Item Pickups":6,"Graffiti Removal":2,"Homeless Encampment":2,"Bus Stop Furniture":1,"Other":1,"Report a Sidewalk Problem":1,"Service Not Complete":1},"2026-07-16":{"Illegal Dumping Item Pickup":2,"Homeless Encampment":2,"Information-Only":2,"Item Pickups":2,"Graffiti Removal":1,"Tree Emergency":1},"2026-07-17":{"Illegal Dumping Item Pickup":9,"Information-Only":3,"Homeless Encampment":3,"Item Pickups":1,"Landscape Maintenance":1,"Street Sweeping":1,"Program Research":1,"Service Not Complete":1,"Street Tree Inspection":1,"Other":1},"2026-07-18":{"Item Pickups":4,"Graffiti Removal":4,"Illegal Dumping Item Pickup":3,"Homeless Encampment":2,"Park Cleanliness, Trash and Ground Maintenance":1,"Dead Animal Removal":1,"Sidewalk Repair Access Request Program":1,"Information-Only":1},"2026-07-19":{"Illegal Dumping Item Pickup":13,"Item Pickups":5,"Street Pavement Issues":3,"Graffiti Removal":2,"Homeless Encampment":1,"Information-Only":1,"Illegal Sign Removal, News Rack Issues":1},"2026-07-20":{"Information-Only":6,"Street Pavement Issues":6,"Item Pickups":4,"Parking Issues":1,"Illegal Dumping Item Pickup":1}};
+const parks26 = ["MacArthur Park","Seoul International Park","Echo Park","Jackie Tatum Harvard Recreation Center","Venice Beach Recreation Center","Whitsett Fields","South Park Recreation Center","Lanark Recreation Center","Stoner Recreation Center","Green Meadows Recreation Center","El Sereno Recreation Center","Northridge Recreation Center","Sylmar Recreation Center","Sheldon-Arleta Park","Westwood Recreation Center","Wilmington Recreation Center","Sycamore Grove","Ken Malloy Harbor Regional Park","Hansen Dam Pool","Cheviot Hills Recreation Center"];
+const parkTotals26 = [1861,272,213,180,77,76,60,58,58,44,42,35,31,30,30,29,22,4,2,1];
+const parkTopCt26 = ["Graffiti Removal","Illegal Dumping Item Pickup","Graffiti Removal","Illegal Dumping Item Pickup","Dockless Mobility Enforcement","Illegal Dumping Item Pickup","Illegal Dumping Item Pickup","Illegal Dumping Item Pickup","Information-Only","Information-Only","Item Pickups","Item Pickups","Item Pickups","Illegal Dumping Item Pickup","Item Pickups","Information-Only","Item Pickups","Illegal Dumping Item Pickup","Information-Only","Item Pickups"];
+const parkTopCnt26 = [1514,107,49,61,34,22,18,21,19,11,15,16,15,11,15,10,8,1,1,1];
+// Accurate per-park stacked breakdown (ex-MacArthur)
+const exclParkNames = ["Seoul International Park","Echo Park","Jackie Tatum Harvard Recreation Center","Venice Beach Recreation Center","Whitsett Fields","South Park Recreation Center","Lanark Recreation Center","Stoner Recreation Center","Green Meadows Recreation Center","El Sereno Recreation Center","Northridge Recreation Center","Sylmar Recreation Center","Sheldon-Arleta Park","Westwood Recreation Center","Wilmington Recreation Center","Sycamore Grove"];
+const dayTypes26 = ["Day Before","Event Day","Day After"];
+const dayCT26 = {"Graffiti Removal":[332,429,875],"Illegal Dumping Item Pickup":[124,150,97],"Item Pickups":[97,76,92],"Homeless Encampment":[24,173,50],"Information-Only":[76,82,64],"Street Sweeping":[52,9,12],"Service Not Complete":[13,9,31]};
+// Accurate building type data
+const btByPark = {
+  "Park / Public Facility":  [1289,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  "Residential Building":    [213,115,70,75,19,15,17,33,25,18,11,16,10,15,15,7,10,2,0,0],
+  "Other / Street Property": [145,25,9,10,7,12,2,1,5,1,2,2,2,2,2,0,0,1,0,0],
+  "Unclassified":            [122,3,2,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  "Unknown":                 [92,129,132,95,50,49,41,24,28,25,29,17,19,13,13,22,12,1,2,1]
+};
+const btByCT = {
+  "Park / Public Facility":  [1283,0,0,6,0,0,0,0],
+  "Residential Building":    [215,171,105,27,78,1,22,7],
+  "Other / Street Property": [15,21,0,99,8,45,0,10],
+  "Unclassified":            [1,3,0,86,4,26,0,2],
+  "Unknown":                 [122,176,160,36,132,1,31,31]
+};
+const hours = Array.from({length:24},(_,i)=>i);
+const hourDB26 = [2,2,5,0,1,2,4,8,42,79,55,63,47,71,109,54,76,39,74,21,26,26,11,9];
+const hourED26 = [2,2,1,1,0,4,2,24,30,65,81,76,195,112,118,59,87,56,44,25,7,6,5,14];
+const hourDA26 = [2,0,1,0,1,0,5,22,61,89,80,125,146,113,79,97,73,45,57,31,132,113,7,4];
+
+// ── GLOBAL CANONICAL COLOUR PALETTE ─────────────────────────────────────────
+// Every complaint type, building type, and contact mode uses exactly one colour
+// across all tabs. Reference these constants everywhere instead of raw hex.
+const CC = {
+  // Complaint types
+  'Graffiti Removal':                '#6366f1',  // indigo
+  'Bulky Items':                     '#f59e0b',  // amber  (also Item Pickups in 2026)
+  'Item Pickups':                    '#f59e0b',  // amber  (same family as Bulky Items)
+  'Homeless Encampment':             '#8b5cf6',  // violet
+  'Illegal Dumping Item Pickup':     '#ef4444',  // red
+  'Illegal Dumping Pickup':          '#ef4444',  // red   (2024 name)
+  'Illegal Dumping':                 '#ef4444',  // red   (short label)
+  'Information-Only':                '#06b6d4',  // cyan
+  'Street Sweeping':                 '#10b981',  // emerald
+  'Dockless Mobility Enforcement':   '#ec4899',  // pink
+  'Service Not Complete':            '#94a3b8',  // slate
+  'Dead Animal Removal':             '#64748b',  // dark slate
+  'Metal/Household Appliances':      '#fb923c',  // orange-light
+  'Metal/HH Appl.':                  '#fb923c',
+  'Electronic Waste':                '#22d3ee',  // sky
+  'Other':                           '#475569',  // dark grey
+  // Building types
+  'Park / Public Facility':          '#3b82f6',  // blue
+  'Residential Building':            '#10b981',  // emerald
+  'Other / Street Property':         '#f59e0b',  // amber
+  'Unclassified':                    '#8b5cf6',  // violet
+  'Unknown':                         '#6b7280',  // grey
+  'Commercial Building':             '#a78bfa',  // light violet
+  // Mode of contact
+  'Self Service':                    '#3b82f6',  // blue
+  'Mobile App':                      '#6366f1',  // indigo
+  'Call':                            '#10b981',  // emerald
+  'Driver Self Report':              '#6b7280',  // grey
+  'Email':                           '#94a3b8',  // slate
+  'Voicemail':                       '#cbd5e1',  // light
+  // Day types
+  'Day Before':                      '#3b82f6',  // blue
+  'Event Day':                       '#10b981',  // emerald
+  'Day After':                       '#ef4444',  // red
+};
+function cc(name){ return CC[name]||'#60a5fa'; }
+// ─────────────────────────────────────────────────────────────────────────────
+
+const btColors = [cc('Park / Public Facility'),cc('Residential Building'),cc('Other / Street Property'),cc('Unclassified'),cc('Unknown')];
+const ctColors26 = [cc('Graffiti Removal'),cc('Illegal Dumping Item Pickup'),cc('Item Pickups'),cc('Homeless Encampment'),cc('Information-Only'),cc('Street Sweeping'),cc('Dockless Mobility Enforcement'),cc('Service Not Complete')];
+
+// c26-overall
+(()=>{
+  const ec=mk('c26-overall');
+  const sorted=[...ct26].sort((a,b)=>b[1]-a[1]);
+  ec.setOption({...base(),grid:{left:220,right:60,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d[0]),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:210,overflow:'truncate'}},
+    series:[{type:'bar',data:sorted.map(d=>d[1]),label:{show:true,position:'right',color:LABEL,fontSize:10},
+      itemStyle:{color:p=>cc(sorted[p.dataIndex][0])}}]
+  });
+})();
+
+// c26-park-top
+(()=>{
+  const ec=mk('c26-park-top');
+  const sorted=parks26.map((p,i)=>({p,top:parkTopCt26[i],cnt:parkTopCnt26[i]})).sort((a,b)=>b.cnt-a.cnt);
+  ec.setOption({...base(),grid:{left:240,right:120,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d.p.replace(' Recreation Center',' RC')),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:230,overflow:'truncate'}},
+    series:[{type:'bar',data:sorted.map(d=>({value:d.cnt,itemStyle:{color:cc(d.top)}})),
+      label:{show:true,position:'right',formatter:p=>sorted[p.dataIndex].top,color:LABEL,fontSize:10}}]
+  });
+})();
+
+// c26-park-total
+(()=>{
+  const ec=mk('c26-park-total');
+  const sorted=parks26.map((p,i)=>({p,v:parkTotals26[i]})).sort((a,b)=>b.v-a.v);
+  ec.setOption({...base(),grid:{left:240,right:70,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d.p.replace(' Recreation Center',' RC')),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:230,overflow:'truncate'}},
+    series:[{type:'bar',data:sorted.map(d=>d.v),label:{show:true,position:'right',color:LABEL,fontSize:11},
+      itemStyle:{color:'#6366f1'}}]
+  });
+})();
+
+// c26-stacked
+(()=>{
+  const ec=mk('c26-stacked');
+  const exP=exclParkNames.map(p=>p.replace(' Recreation Center',' RC').replace('International Park','Intl Park'));
+  const sd={
+    "Graffiti Removal":           [37,49,8,4,8,3,4,0,0,0,0,0,3,0,0,6],
+    "Illegal Dumping Item Pickup":[107,42,61,5,22,18,21,16,8,11,2,0,11,9,8,4],
+    "Item Pickups":               [31,37,42,5,15,12,9,10,10,15,16,15,7,15,6,8],
+    "Homeless Encampment":        [15,7,3,7,11,1,4,0,1,0,1,0,2,0,0,1],
+    "Information-Only":           [30,33,31,13,9,13,11,19,11,6,6,7,4,2,10,1],
+    "Other":                      [51,44,34,42,10,13,9,13,14,10,10,9,3,4,5,2]
+  };
+  const colors=[cc('Graffiti Removal'),cc('Illegal Dumping Item Pickup'),cc('Item Pickups'),cc('Homeless Encampment'),cc('Information-Only'),cc('Other')];
+  ec.setOption({...base(),legend:{bottom:0,textStyle:{color:LABEL,fontSize:10}},
+    grid:{left:10,right:10,top:10,bottom:80,containLabel:true},
+    xAxis:{type:'category',data:exP,axisLabel:{rotate:40,color:LABEL,fontSize:9},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:Object.entries(sd).map(([name,data],i)=>({name,type:'bar',stack:'total',data,itemStyle:{color:colors[i]}}))
+  });
+})();
+
+// populate table — with optional per-date filter
+function renderTbl26(dateKey){
+  const tbody=document.getElementById('tbl-26');
+  tbody.innerHTML='';
+  let rows,total;
+  if(dateKey && DATE_CT_26[dateKey]){
+    const obj=DATE_CT_26[dateKey];
+    total=Object.values(obj).reduce((a,b)=>a+b,0);
+    rows=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  } else {
+    total=3125;
+    rows=ct26;
+  }
+  rows.forEach(([name,count])=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${name}</td><td style="text-align:right;font-weight:600;color:#60a5fa">${count}</td><td style="text-align:right;color:#64748b">${((count/total)*100).toFixed(1)}%</td>`;
+    tbody.appendChild(tr);
+  });
+}
+renderTbl26('');
+document.getElementById('tbl-date-filter').addEventListener('change',function(){renderTbl26(this.value);});
+
+// c26-day-nature
+(()=>{
+  const ec=mk('c26-day-nature');
+  ec.setOption({...base(),legend:{bottom:0,textStyle:{color:LABEL,fontSize:11}},
+    grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:dayTypes26,axisLabel:{color:LABEL},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:Object.entries(dayCT26).map(([name,data])=>({name,type:'bar',data,itemStyle:{color:cc(name)}}))
+  });
+})();
+
+// c26-mode
+(()=>{
+  const ec=mk('c26-mode');
+  ec.setOption({...base(),tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'pie',radius:['38%','65%'],data:[{value:2518,name:'Self Service',itemStyle:{color:cc('Self Service')}},{value:600,name:'Call',itemStyle:{color:cc('Call')}},{value:5,name:'Other',itemStyle:{color:cc('Other')}}],label:{color:LABEL,fontSize:11}}]
+  });
+})();
+
+// c26-day-totals
+(()=>{
+  const ec=mk('c26-day-totals');
+  ec.setOption({...base(),grid:{left:20,right:20,top:20,bottom:20,containLabel:true},
+    xAxis:{type:'category',data:['Day Before','Event Day','Day After'],axisLabel:{color:LABEL},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:[{type:'bar',data:[{value:826,itemStyle:{color:cc('Day Before')}},{value:1016,itemStyle:{color:cc('Event Day')}},{value:1283,itemStyle:{color:cc('Day After')}}],label:{show:true,position:'top',color:LABEL}}]
+  });
+})();
+
+// c26-bt-pie  (Overall building type distribution — all 3,125 rows)
+(()=>{
+  const ec=mk('c26-bt-pie');
+  ec.setOption({...base(),tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:LABEL,fontSize:10}},
+    series:[{type:'pie',radius:['35%','60%'],center:['35%','50%'],
+      data:[
+        {name:'Park / Public Facility',value:1289},
+        {name:'Residential Building',value:686},
+        {name:'Other / Street Property',value:228},
+        {name:'Unclassified',value:128},
+        {name:'Unknown',value:794}
+      ].map(d=>({...d,itemStyle:{color:cc(d.name)}})),
+      label:{color:LABEL,fontSize:10}}]
+  });
+})();
+
+// c26-bt-bar  (building type stacked by complaint type, top 8 types)
+(()=>{
+  const ec=mk('c26-bt-bar');
+  const btC=['Graffiti Removal','Illegal Dumping','Item Pickups','Homeless Enc.','Information-Only','Street Sweeping','Service Not Cmplt','Dockless Mob.'];
+  const btByCTLabels=["Park / Public Facility","Residential Building","Other / Street Property","Unclassified","Unknown"];
+  ec.setOption({...base(),legend:{bottom:0,textStyle:{color:LABEL,fontSize:10}},
+    grid:{left:20,right:20,top:10,bottom:80,containLabel:true},
+    xAxis:{type:'category',data:btC,axisLabel:{rotate:25,color:LABEL,fontSize:10},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:btByCTLabels.map((name,i)=>({name,type:'bar',stack:'total',data:btByCT[name],itemStyle:{color:btColors[i]}}))
+  });
+})();
+
+// c26-park-bt  (building type by park — all 20 parks)
+(()=>{
+  const ec=mk('c26-park-bt');
+  const shortParks=parks26.map(p=>p.replace(' Recreation Center',' RC').replace('International Park','Intl Park'));
+  const btLabels=["Park / Public Facility","Residential Building","Other / Street Property","Unclassified","Unknown"];
+  ec.setOption({...base(),legend:{bottom:0,textStyle:{color:LABEL,fontSize:11}},
+    grid:{left:20,right:20,top:10,bottom:70,containLabel:true},
+    xAxis:{type:'category',data:shortParks,axisLabel:{rotate:38,color:LABEL,fontSize:9},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:btLabels.map((name,i)=>({name,type:'bar',stack:'total',data:btByPark[name],itemStyle:{color:btColors[i]}}))
+  });
+})();
+
+// c26-hourly
+(()=>{
+  const ec=mk('c26-hourly');
+  const lbs=hours.map(h=>`${h}:00`);
+  ec.setOption({...base(),legend:{bottom:0,textStyle:{color:LABEL}},
+    grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:lbs,axisLabel:{color:LABEL,rotate:45,fontSize:10},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:[{name:'Day Before',type:'line',data:hourDB26,smooth:true,itemStyle:{color:cc('Day Before')},lineStyle:{width:2}},
+            {name:'Event Day',type:'line',data:hourED26,smooth:true,itemStyle:{color:cc('Event Day')},lineStyle:{width:2}},
+            {name:'Day After',type:'line',data:hourDA26,smooth:true,itemStyle:{color:cc('Day After')},lineStyle:{width:2}}]
+  });
+})();
+
+// c26-heatmap  (Day Type × Hour — computed from source data)
+(()=>{
+  const ec=mk('c26-heatmap');
+  const dayLabels=['Day Before','Event Day','Day After'];
+  // [day_type_idx, hour, count] — only non-zero entries
+  const hData=[[0,0,2],[0,1,2],[0,2,5],[0,4,1],[0,5,2],[0,6,4],[0,7,8],[0,8,42],[0,9,79],[0,10,55],[0,11,63],[0,12,47],[0,13,71],[0,14,109],[0,15,54],[0,16,76],[0,17,39],[0,18,74],[0,19,21],[0,20,26],[0,21,26],[0,22,11],[0,23,9],[1,0,2],[1,1,2],[1,2,1],[1,3,1],[1,5,4],[1,6,2],[1,7,24],[1,8,30],[1,9,65],[1,10,81],[1,11,76],[1,12,195],[1,13,112],[1,14,118],[1,15,59],[1,16,87],[1,17,56],[1,18,44],[1,19,25],[1,20,7],[1,21,6],[1,22,5],[1,23,14],[2,0,2],[2,2,1],[2,4,1],[2,6,5],[2,7,22],[2,8,61],[2,9,89],[2,10,80],[2,11,125],[2,12,146],[2,13,113],[2,14,79],[2,15,97],[2,16,73],[2,17,45],[2,18,57],[2,19,31],[2,20,132],[2,21,113],[2,22,7],[2,23,4]];
+  const maxV=195;
+  ec.setOption({...base(),
+    tooltip:{position:'top',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'},
+      formatter:p=>`${dayLabels[p.data[1]]} | ${p.data[0]}:00<br/>Requests: <b>${p.data[2]}</b>`},
+    grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:hours.map(h=>`${h}:00`),splitArea:{show:true},axisLabel:{color:LABEL,fontSize:9,rotate:45},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'category',data:dayLabels,splitArea:{show:true},axisLabel:{color:LABEL,fontSize:12},axisLine:{lineStyle:{color:AXIS}}},
+    visualMap:{min:0,max:maxV,calculable:true,orient:'horizontal',left:'center',bottom:0,textStyle:{color:LABEL},inRange:{color:['#0f172a','#1d4ed8','#ef4444']}},
+    series:[{name:'Requests',type:'heatmap',data:hData.map(d=>[d[1],d[0],d[2]]),emphasis:{itemStyle:{shadowBlur:8}}}]
+  });
+})();
+
+// ════════════════════════════════════════
+// 2025 CHARTS  (bbox-matched: 212 requests using same ±0.25mi bounding box as 2026)
+// ════════════════════════════════════════
+const parks25 = ["Venice Beach Recreation Center","Jackie Tatum Harvard Recreation Center","Sylmar Recreation Center","Stoner Recreation Center","Wilmington Recreation Center","Green Meadows Recreation Center","South Park Recreation Center","Lanark Recreation Center","Ken Malloy Harbor Regional Park","Westwood Recreation Center","Cheviot Hills Recreation Center","Echo Park","El Sereno Recreation Center"];
+const parkTotals25 = [92,40,26,11,10,9,8,5,4,3,2,1,1];
+const hour25 = [0,0,0,0,0,0,2,9,4,27,32,33,15,9,4,6,7,3,11,3,25,22,0,0];
+const dow25 = {Monday:18,Tuesday:27,Wednesday:55,Thursday:30,Friday:30,Saturday:35,Sunday:17};
+const heatData25=[[0,7,3],[0,8,2],[0,9,5],[0,10,2],[0,12,1],[0,13,3],[0,20,2],[1,9,6],[1,10,4],[1,11,5],[1,12,9],[1,17,2],[1,19,1],[2,8,2],[2,9,1],[2,10,5],[2,11,10],[2,13,3],[2,14,2],[2,18,3],[2,20,10],[2,21,19],[3,6,2],[3,7,1],[3,9,4],[3,10,5],[3,11,7],[3,13,2],[3,14,1],[3,20,5],[3,21,3],[4,7,5],[4,9,9],[4,10,2],[4,11,2],[4,13,1],[4,15,2],[4,16,2],[4,20,7],[5,10,12],[5,11,9],[5,12,2],[5,16,3],[5,18,6],[5,19,2],[5,20,1],[6,9,2],[6,10,2],[6,12,3],[6,14,1],[6,15,4],[6,16,2],[6,17,1],[6,18,2]];
+
+// c25-overall  (bbox-matched: 212 records, all Graffiti Removal)
+(()=>{
+  const ec=mk('c25-overall');
+  const d=[['Graffiti Removal',212]];
+  ec.setOption({...base(),grid:{left:180,right:100,top:30,bottom:30,containLabel:true},
+    xAxis:{type:'value',max:250,axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:['Graffiti Removal'],axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:13,width:170}},
+    series:[{type:'bar',data:[212],barMaxWidth:40,label:{show:true,position:'right',color:LABEL,formatter:'212 (100%)'},
+      itemStyle:{color:'#10b981'}}]
+  });
+})();
+
+// c25-park-top
+(()=>{
+  const ec=mk('c25-park-top');
+  const sorted=parks25.map((p,i)=>({p,v:parkTotals25[i]})).sort((a,b)=>b.v-a.v);
+  ec.setOption({...base(),grid:{left:240,right:70,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d.p.replace(' Recreation Center',' RC')),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:230,overflow:'truncate'}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'bar',data:sorted.map(d=>d.v),label:{show:true,position:'right',color:LABEL,fontSize:11},
+      itemStyle:{color:'#10b981'}}]
+  });
+})();
+
+// c25-park-total
+(()=>{
+  const ec=mk('c25-park-total');
+  const sorted=parks25.map((p,i)=>({p,v:parkTotals25[i]})).sort((a,b)=>b.v-a.v);
+  ec.setOption({...base(),grid:{left:240,right:70,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d.p.replace(' Recreation Center',' RC')),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:230,overflow:'truncate'}},
+    series:[{type:'bar',data:sorted.map(d=>d.v),label:{show:true,position:'right',color:LABEL,fontSize:11},
+      itemStyle:{color:p=>p.dataIndex===0?'#10b981':'#0d9488'}}]
+  });
+})();
+
+// c25-dow
+(()=>{
+  const ec=mk('c25-dow');
+  const dOrd=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  ec.setOption({...base(),grid:{left:20,right:20,top:20,bottom:20,containLabel:true},
+    xAxis:{type:'category',data:dOrd,axisLabel:{color:LABEL},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:[{type:'bar',data:dOrd.map(d=>dow25[d]),label:{show:true,position:'top',color:LABEL},
+      itemStyle:{color:p=>['#10b981','#0d9488','#34d399','#14b8a6','#6ee7b7','#4b5563','#374151'][p.dataIndex]}}]
+  });
+})();
+
+// c25-mode  (bbox-matched 212 records: 212 Driver Self Report, 0 other)
+(()=>{
+  const ec=mk('c25-mode');
+  ec.setOption({...base(),tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'pie',radius:['38%','65%'],data:[{value:212,name:'Driver Self Report (100%)',itemStyle:{color:cc('Driver Self Report')}}],label:{color:LABEL,fontSize:12}}]
+  });
+})();
+
+// c25-hourly
+(()=>{
+  const ec=mk('c25-hourly');
+  ec.setOption({...base(),grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:hours.map(h=>`${h}:00`),axisLabel:{color:LABEL,rotate:45,fontSize:10},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:[{type:'bar',data:hour25,itemStyle:{color:'#10b981'},label:{show:false}}]
+  });
+})();
+
+// c25-heatmap
+(()=>{
+  const ec=mk('c25-heatmap');
+  const hDays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const maxV=Math.max(...heatData25.map(d=>d[2]));
+  ec.setOption({...base(),
+    tooltip:{position:'top',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'},formatter:p=>`${hDays[p.data[1]]} ${p.data[0]}:00<br/>Requests: <b>${p.data[2]}</b>`},
+    grid:{left:80,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:hours.map(h=>`${h}:00`),splitArea:{show:true},axisLabel:{color:LABEL,fontSize:9,rotate:45},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'category',data:hDays,splitArea:{show:true},axisLabel:{color:LABEL,fontSize:11},axisLine:{lineStyle:{color:AXIS}}},
+    visualMap:{min:0,max:maxV,calculable:true,orient:'horizontal',left:'center',bottom:0,textStyle:{color:LABEL},inRange:{color:['#0f172a','#065f46','#34d399']}},
+    series:[{name:'Requests',type:'heatmap',data:heatData25.map(d=>[d[1],d[0],d[2]]),emphasis:{itemStyle:{shadowBlur:8}}}]
+  });
+})();
+
+// c25-bt-pie
+(()=>{
+  const ec=mk('c25-bt-pie');
+  ec.setOption({...base(),
+    tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:LABEL,fontSize:11}},
+    series:[{type:'pie',radius:['38%','65%'],center:['35%','50%'],
+      data:[
+        {name:'Residential Building',value:111,itemStyle:{color:cc('Residential Building')}},
+        {name:'Other / Street Property',value:100,itemStyle:{color:cc('Other / Street Property')}},
+        {name:'Commercial Building',value:1,itemStyle:{color:cc('Commercial Building')}}
+      ],label:{color:LABEL,fontSize:10}}]
+  });
+})();
+
+// c25-bt-park
+(()=>{
+  const ec=mk('c25-bt-park');
+  const btParks25=['Venice Beach RC','Jackie Tatum Harvard RC','Sylmar RC','Stoner RC','Wilmington RC','Green Meadows RC','South Park RC','Lanark RC','Ken Malloy Harbor RP','Westwood RC','Cheviot Hills RC','Echo Park','El Sereno RC'];
+  const btRes25=  [46,36,0,6,10,2,2,0,4,2,2,0,1];
+  const btStreet25=[45,4,26,5,0,7,6,5,0,1,0,1,0];
+  const btComm25=  [1,0,0,0,0,0,0,0,0,0,0,0,0];
+  ec.setOption({...base(),
+    legend:{bottom:0,textStyle:{color:LABEL,fontSize:11}},
+    grid:{left:20,right:20,top:10,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:btParks25,axisLabel:{rotate:35,color:LABEL,fontSize:9},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[
+      {name:'Residential Building',type:'bar',stack:'total',data:btRes25,itemStyle:{color:cc('Residential Building')}},
+      {name:'Other / Street Property',type:'bar',stack:'total',data:btStreet25,itemStyle:{color:cc('Other / Street Property')}},
+      {name:'Commercial Building',type:'bar',stack:'total',data:btComm25,itemStyle:{color:cc('Commercial Building')}}
+    ]
+  });
+})();
+
+// ════════════════════════════════════════
+// 2024 CHARTS  (bbox-matched: 3,742 requests, same ±0.25mi filter)
+// ════════════════════════════════════════
+const ct24=[["Bulky Items",1376],["Graffiti Removal",1059],["Homeless Encampment",615],["Illegal Dumping Pickup",265],["Metal/Household Appliances",223],["Dead Animal Removal",64],["Electronic Waste",61],["Multiple Streetlight Issue",37],["Single Streetlight Issue",22],["Other",19],["Report Water Waste",1]];
+const parks24=["MacArthur Park","Seoul International Park","Echo Park","Jackie Tatum Harvard Recreation Center","Venice Beach Recreation Center","Whitsett Fields","South Park Recreation Center","Lanark Recreation Center","Stoner Recreation Center","Green Meadows Recreation Center","El Sereno Recreation Center","Northridge Recreation Center","Sylmar Recreation Center","Sheldon-Arleta Park","Westwood Recreation Center","Wilmington Recreation Center","Sycamore Grove","Ken Malloy Harbor Regional Park","Hansen Dam Pool","Cheviot Hills Recreation Center"];
+const parkTotals24=[842,434,499,241,173,94,250,148,222,276,68,41,99,34,88,82,111,26,4,10];
+const parkTopCt24=["Homeless Encampment","Bulky Items","Graffiti Removal","Bulky Items","Graffiti Removal","Bulky Items","Bulky Items","Bulky Items","Bulky Items","Bulky Items","Bulky Items","Bulky Items","Graffiti Removal","Bulky Items","Bulky Items","Bulky Items","Bulky Items","Graffiti Removal","Dead Animal Removal","Homeless Encampment"];
+const parkTopCnt24=[457,184,340,118,61,51,136,80,152,120,34,26,47,14,67,42,39,10,2,4];
+const hourly24=[51,10,6,2,16,20,46,109,186,269,258,250,218,256,322,385,401,223,146,133,115,127,133,60];
+const heatData24=[[0,4,3],[0,5,2],[0,6,6],[0,7,12],[0,8,28],[0,9,56],[0,10,61],[0,11,44],[0,12,37],[0,13,35],[0,14,64],[0,15,56],[0,16,52],[0,17,33],[0,18,31],[0,19,13],[0,20,17],[0,21,11],[0,22,23],[0,23,15],[1,0,37],[1,1,2],[1,2,1],[1,3,1],[1,4,7],[1,5,6],[1,6,10],[1,7,31],[1,8,35],[1,9,59],[1,10,47],[1,11,75],[1,12,45],[1,13,62],[1,14,80],[1,15,69],[1,16,54],[1,17,52],[1,18,30],[1,19,32],[1,20,24],[1,21,17],[1,22,17],[1,23,6],[2,0,2],[2,1,2],[2,2,1],[2,4,2],[2,5,5],[2,6,5],[2,7,15],[2,8,37],[2,9,42],[2,10,37],[2,11,31],[2,12,34],[2,13,35],[2,14,44],[2,15,46],[2,16,143],[2,17,59],[2,18,40],[2,19,20],[2,20,15],[2,21,36],[2,22,40],[2,23,8],[3,0,1],[3,1,3],[3,2,2],[3,3,1],[3,4,2],[3,6,10],[3,7,17],[3,8,31],[3,9,52],[3,10,38],[3,11,44],[3,12,43],[3,13,38],[3,14,33],[3,15,122],[3,16,55],[3,17,50],[3,18,12],[3,19,18],[3,20,33],[3,21,17],[3,22,5],[3,23,2],[4,0,4],[4,1,1],[4,2,1],[4,4,1],[4,5,6],[4,6,3],[4,7,17],[4,8,31],[4,9,37],[4,10,47],[4,11,28],[4,12,34],[4,13,27],[4,14,29],[4,15,36],[4,16,47],[4,17,20],[4,18,5],[4,19,10],[4,20,3],[4,21,10],[4,22,25],[4,23,9],[5,0,5],[5,1,1],[5,5,1],[5,6,6],[5,7,13],[5,8,15],[5,9,8],[5,10,22],[5,11,12],[5,12,18],[5,13,40],[5,14,65],[5,15,38],[5,16,41],[5,17,6],[5,18,13],[5,19,33],[5,20,12],[5,21,7],[5,22,4],[5,23,6],[6,0,2],[6,1,1],[6,2,1],[6,4,1],[6,6,6],[6,7,4],[6,8,9],[6,9,15],[6,10,6],[6,11,16],[6,12,7],[6,13,19],[6,14,7],[6,15,18],[6,16,9],[6,17,3],[6,18,15],[6,19,7],[6,20,11],[6,21,29],[6,22,19],[6,23,14]];
+const dow24={Monday:599,Tuesday:799,Wednesday:699,Thursday:629,Friday:431,Saturday:366,Sunday:219};
+const ctColors24=ct24.map(([name])=>cc(name));
+
+// c24-overall
+(()=>{
+  const ec=mk('c24-overall');
+  const sorted=[...ct24].sort((a,b)=>b[1]-a[1]);
+  ec.setOption({...base(),grid:{left:220,right:70,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d[0]),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:210,overflow:'truncate'}},
+    series:[{type:'bar',data:sorted.map(d=>d[1]),label:{show:true,position:'right',color:LABEL,fontSize:10},
+      itemStyle:{color:p=>cc(sorted[p.dataIndex][0])}}]
+  });
+})();
+
+// c24-park-top
+(()=>{
+  const ec=mk('c24-park-top');
+  const sorted=parks24.map((p,i)=>({p,top:parkTopCt24[i],cnt:parkTopCnt24[i]})).sort((a,b)=>b.cnt-a.cnt);
+  ec.setOption({...base(),grid:{left:240,right:120,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d.p.replace(' Recreation Center',' RC').replace('International Park','Intl Park')),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:230,overflow:'truncate'}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'bar',data:sorted.map(d=>({value:d.cnt,itemStyle:{color:cc(d.top)}})),
+      label:{show:true,position:'right',formatter:p=>sorted[p.dataIndex].top,color:LABEL,fontSize:10}}]
+  });
+})();
+
+// c24-park-total
+(()=>{
+  const ec=mk('c24-park-total');
+  const sorted=parks24.map((p,i)=>({p,v:parkTotals24[i]})).sort((a,b)=>b.v-a.v);
+  ec.setOption({...base(),grid:{left:240,right:70,top:10,bottom:10,containLabel:true},
+    xAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    yAxis:{type:'category',data:sorted.map(d=>d.p.replace(' Recreation Center',' RC').replace('International Park','Intl Park')),axisLine:{lineStyle:{color:AXIS}},axisLabel:{color:LABEL,fontSize:11,width:230,overflow:'truncate'}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'bar',data:sorted.map(d=>d.v),label:{show:true,position:'right',color:LABEL,fontSize:11},
+      itemStyle:{color:'#fb923c'}}]
+  });
+})();
+
+// c24-stacked
+(()=>{
+  const ec=mk('c24-stacked');
+  const sd={
+    "Bulky Items":                [116,184,108,118,45,51,136,80,152,120,34,26,36,14,67,42,39,7,0,1],
+    "Graffiti Removal":           [212,134,340,32,61,22,55,13,19,52,8,2,47,2,1,19,25,10,2,3],
+    "Homeless Encampment":        [457,11,0,16,46,4,1,20,6,20,1,1,3,4,0,1,19,1,0,4],
+    "Illegal Dumping Pickup":     [27,53,14,37,3,4,22,14,8,46,9,0,2,4,0,7,15,0,0,0],
+    "Metal/Household Appliances": [12,29,11,21,8,7,16,16,21,16,6,6,9,4,17,12,8,3,0,1],
+    "Other":                      [18,23,26,17,10,6,20,5,16,22,10,6,2,6,3,1,5,5,2,1]
+  };
+  const colors24s=[cc('Bulky Items'),cc('Graffiti Removal'),cc('Homeless Encampment'),cc('Illegal Dumping Pickup'),cc('Metal/Household Appliances'),cc('Other')];
+  const shortParks=parks24.map(p=>p.replace(' Recreation Center',' RC').replace('International Park','Intl Park'));
+  ec.setOption({...base(),legend:{bottom:0,textStyle:{color:LABEL,fontSize:10}},
+    grid:{left:10,right:10,top:10,bottom:80,containLabel:true},
+    xAxis:{type:'category',data:shortParks,axisLabel:{rotate:40,color:LABEL,fontSize:9},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:Object.entries(sd).map(([name,data],i)=>({name,type:'bar',stack:'total',data,itemStyle:{color:colors24s[i]}}))
+  });
+})();
+
+// c24-hourly
+(()=>{
+  const ec=mk('c24-hourly');
+  ec.setOption({...base(),grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:hours.map(h=>`${h}:00`),axisLabel:{color:LABEL,rotate:45,fontSize:10},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'bar',data:hourly24,itemStyle:{color:'#f97316'},label:{show:false}}]
+  });
+})();
+
+// c24-dow
+(()=>{
+  const ec=mk('c24-dow');
+  const dOrd=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  ec.setOption({...base(),grid:{left:20,right:20,top:20,bottom:20,containLabel:true},
+    xAxis:{type:'category',data:dOrd,axisLabel:{color:LABEL},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'bar',data:dOrd.map(d=>dow24[d]),label:{show:true,position:'top',color:LABEL},
+      itemStyle:{color:p=>['#f97316','#fb923c','#fdba74','#fbbf24','#a78bfa','#6b7280','#475569'][p.dataIndex]}}]
+  });
+})();
+
+// c24-mode
+(()=>{
+  const ec=mk('c24-mode');
+  ec.setOption({...base(),
+    tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:LABEL,fontSize:10}},
+    series:[{type:'pie',radius:['38%','65%'],center:['38%','50%'],
+      data:[
+        {value:1688,name:'Mobile App',itemStyle:{color:cc('Mobile App')}},
+        {value:1086,name:'Call',itemStyle:{color:cc('Call')}},
+        {value:625, name:'Self Service',itemStyle:{color:cc('Self Service')}},
+        {value:331, name:'Driver Self Report',itemStyle:{color:cc('Driver Self Report')}},
+        {value:12,  name:'Other',itemStyle:{color:cc('Other')}}
+      ],label:{color:LABEL,fontSize:10}}]
+  });
+})();
+
+// c24-heatmap
+(()=>{
+  const ec=mk('c24-heatmap');
+  const hDays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const maxV24=143;
+  ec.setOption({...base(),
+    tooltip:{position:'top',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'},
+      formatter:p=>`${hDays[p.data[1]]} ${p.data[0]}:00<br/>Requests: <b>${p.data[2]}</b>`},
+    grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:hours.map(h=>`${h}:00`),splitArea:{show:true},axisLabel:{color:LABEL,fontSize:9,rotate:45},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'category',data:hDays,splitArea:{show:true},axisLabel:{color:LABEL,fontSize:11},axisLine:{lineStyle:{color:AXIS}}},
+    visualMap:{min:0,max:maxV24,calculable:true,orient:'horizontal',left:'center',bottom:0,textStyle:{color:LABEL},inRange:{color:['#0f172a','#7c2d12','#f97316']}},
+    series:[{name:'Requests',type:'heatmap',data:heatData24.map(d=>[d[1],d[0],d[2]]),emphasis:{itemStyle:{shadowBlur:8}}}]
+  });
+})();
+
+// ════════════════════════════════════════
+// COMPARISON CHARTS — 2024 · 2025 · 2026
+// ════════════════════════════════════════
+const cmpParks=["MacArthur Park","Seoul Intl Park","Echo Park","Jackie Tatum Harvard RC","Venice Beach RC","Whitsett Fields","South Park RC","Lanark RC","Stoner RC","Green Meadows RC","El Sereno RC","Northridge RC","Sylmar RC","Sheldon-Arleta Park","Westwood RC","Wilmington RC","Sycamore Grove","Ken Malloy Harbor RP","Hansen Dam Pool","Cheviot Hills RC"];
+// park totals in park-order above (matches parks26/parks24 order)
+const cmpV24=[842,434,499,241,173,94,250,148,222,276,68,41,99,34,88,82,111,26,4,10];
+const cmpV25=[0,0,1,40,92,0,8,5,11,9,1,0,26,0,3,10,0,4,0,2];
+const cmpV26=[1861,272,213,180,77,76,60,58,58,44,42,35,31,30,30,29,22,4,2,1];
+// pct change 2024→2026 (apples-to-apples resident baseline)
+const pctChange24to26=cmpV24.map((v,i)=>v>0?Math.round(((cmpV26[i]-v)/v)*100):cmpV26[i]>0?9999:0);
+
+// c-cmp-parks  — grouped bar, all 3 years
+(()=>{
+  const ec=mk('c-cmp-parks');
+  // sort by 2026 desc for readability
+  const idx=cmpV26.map((_,i)=>i).sort((a,b)=>cmpV26[b]-cmpV26[a]);
+  const sortedParks=idx.map(i=>cmpParks[i]);
+  ec.setOption({...base(),
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    legend:{bottom:0,textStyle:{color:LABEL,fontSize:11},data:['2024','2025','2026']},
+    grid:{left:20,right:20,top:10,bottom:50,containLabel:true},
+    xAxis:{type:'category',data:sortedParks,axisLabel:{rotate:38,color:LABEL,fontSize:9},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:[
+      {name:'2024',type:'bar',data:idx.map(i=>cmpV24[i]),itemStyle:{color:'#f97316'},barMaxWidth:22},
+      {name:'2025',type:'bar',data:idx.map(i=>cmpV25[i]),itemStyle:{color:'#10b981'},barMaxWidth:22},
+      {name:'2026',type:'bar',data:idx.map(i=>cmpV26[i]),itemStyle:{color:'#3b82f6'},barMaxWidth:22}
+    ]
+  });
+})();
+
+// c-cmp-pct  — 2024→2026 diverging bar, sorted
+(()=>{
+  const ec=mk('c-cmp-pct');
+  const pairs=cmpParks.map((p,i)=>({p,v:pctChange24to26[i],raw24:cmpV24[i],raw26:cmpV26[i]}))
+    .filter(d=>d.raw24>0||d.raw26>0)
+    .sort((a,b)=>b.v-a.v);
+  const cappedVals=pairs.map(d=>Math.min(d.v,300)); // cap display at +300% for readability
+  ec.setOption({...base(),
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'},
+      formatter:params=>{
+        const i=params[0].dataIndex;
+        const d=pairs[i];
+        const actual = d.raw24>0 ? (d.raw24>0?`${d.raw24}→${d.raw26} (${d.v>0?'+':''}${d.v}%)`:'new') : 'no 2024 data';
+        return `${d.p}<br/>${actual}`;
+      }},
+    grid:{left:20,right:80,top:10,bottom:50,containLabel:true},
+    xAxis:{type:'category',data:pairs.map(d=>d.p),axisLabel:{rotate:38,color:LABEL,fontSize:9},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',name:'% change (2024→2026)',nameTextStyle:{color:LABEL,fontSize:10},
+      axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL,formatter:v=>v+'%'}},
+    series:[{type:'bar',
+      data:pairs.map((d,i)=>({
+        value:cappedVals[i],
+        itemStyle:{color:d.v>=0?'#3b82f6':'#ef4444'},
+        label:{show:true,position:d.v>=0?'top':'bottom',
+          formatter:d.v===9999?'NEW':((d.v>0?'+':'')+d.v+'%'),
+          color:LABEL,fontSize:10}
+      }))}]
+  });
+})();
+
+// c-cmp-types  — 3-series grouped bar on shared categories
+(()=>{
+  const ec=mk('c-cmp-types');
+  // shared complaint labels (unified across naming differences)
+  const types=['Graffiti Removal','Bulky Items /\nItem Pickups','Homeless Encampment','Illegal Dumping','Metal /\nHousehold App.','Information-Only','Street Sweeping','Dockless Mobility'];
+  const v24=[1059,1376,615,265,223,0,0,0];
+  const v25=[212,0,0,0,0,0,0,0];
+  const v26=[1636,265,254,371,0,222,73,50];
+  ec.setOption({...base(),
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    legend:{bottom:0,textStyle:{color:LABEL,fontSize:11}},
+    grid:{left:20,right:20,top:20,bottom:70,containLabel:true},
+    xAxis:{type:'category',data:types,axisLabel:{rotate:20,color:LABEL,fontSize:10},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},axisLabel:{color:LABEL}},
+    series:[
+      {name:'2024',type:'bar',data:v24,itemStyle:{color:'#f97316'},barMaxWidth:28},
+      {name:'2025',type:'bar',data:v25,itemStyle:{color:'#10b981'},barMaxWidth:28},
+      {name:'2026',type:'bar',data:v26,itemStyle:{color:'#3b82f6'},barMaxWidth:28}
+    ]
+  });
+})();
+
+// c-cmp-pie24
+(()=>{
+  const ec=mk('c-cmp-pie24');
+  ec.setOption({...base(),tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'pie',radius:['35%','65%'],
+      data:[
+        {value:1376,name:'Bulky Items',itemStyle:{color:cc('Bulky Items')}},
+        {value:1059,name:'Graffiti Removal',itemStyle:{color:cc('Graffiti Removal')}},
+        {value:615, name:'Homeless Enc.',itemStyle:{color:cc('Homeless Encampment')}},
+        {value:265, name:'Illegal Dumping',itemStyle:{color:cc('Illegal Dumping')}},
+        {value:223, name:'Metal/HH Appl.',itemStyle:{color:cc('Metal/HH Appl.')}},
+        {value:199, name:'Other',itemStyle:{color:cc('Other')}}
+      ],label:{color:LABEL,fontSize:9},labelLine:{lineStyle:{color:'#334155'}}}]
+  });
+})();
+
+// c-cmp-pie25
+(()=>{
+  const ec=mk('c-cmp-pie25');
+  ec.setOption({...base(),tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'pie',radius:['35%','65%'],
+      data:[{value:212,name:'Graffiti Removal\n(100% crew logs)',itemStyle:{color:cc('Graffiti Removal')}}],
+      label:{color:LABEL,fontSize:10},labelLine:{lineStyle:{color:'#334155'}}}]
+  });
+})();
+
+// c-cmp-pie26
+(()=>{
+  const ec=mk('c-cmp-pie26');
+  ec.setOption({...base(),tooltip:{trigger:'item',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'}},
+    series:[{type:'pie',radius:['35%','65%'],
+      data:[
+        {value:1636,name:'Graffiti Removal',itemStyle:{color:cc('Graffiti Removal')}},
+        {value:371, name:'Illegal Dumping',itemStyle:{color:cc('Illegal Dumping')}},
+        {value:265, name:'Item Pickups',itemStyle:{color:cc('Item Pickups')}},
+        {value:254, name:'Homeless Enc.',itemStyle:{color:cc('Homeless Encampment')}},
+        {value:222, name:'Info-Only',itemStyle:{color:cc('Information-Only')}},
+        {value:377, name:'Other',itemStyle:{color:cc('Other')}}
+      ],label:{color:LABEL,fontSize:9},labelLine:{lineStyle:{color:'#334155'}}}]
+  });
+})();
+
+// c-cmp-hourly — all 3 years normalized %, area+line
+(()=>{
+  const ec=mk('c-cmp-hourly');
+  const h24=hourly24, t24=h24.reduce((s,v)=>s+v,0);
+  const h25=hour25,  t25=h25.reduce((s,v)=>s+v,0);
+  const h26=Array.from({length:24},(_,i)=>hourDB26[i]+hourED26[i]+hourDA26[i]);
+  const t26=h26.reduce((s,v)=>s+v,0);
+  ec.setOption({...base(),
+    tooltip:{trigger:'axis',backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'},
+      formatter:params=>params.map(p=>`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:5px"></span>${p.seriesName}: ${p.value.toFixed(1)}%`).join('<br/>')},
+    legend:{bottom:0,textStyle:{color:LABEL,fontSize:11}},
+    grid:{left:20,right:20,top:20,bottom:60,containLabel:true},
+    xAxis:{type:'category',data:hours.map(h=>`${h}:00`),axisLabel:{color:LABEL,rotate:45,fontSize:10},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',name:'% of all requests',nameTextStyle:{color:LABEL,fontSize:10},
+      axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},
+      axisLabel:{color:LABEL,formatter:v=>v.toFixed(0)+'%'}},
+    series:[
+      {name:'2024',type:'line',smooth:true,symbol:'none',
+        data:h24.map(v=>+(v/t24*100).toFixed(2)),
+        itemStyle:{color:'#f97316'},lineStyle:{width:2.5},
+        areaStyle:{color:'rgba(249,115,22,0.08)'}},
+      {name:'2025 (crew only)',type:'line',smooth:true,symbol:'none',
+        data:h25.map(v=>+(v/t25*100).toFixed(2)),
+        itemStyle:{color:'#10b981'},lineStyle:{width:2,type:'dashed'},
+        areaStyle:{color:'rgba(16,185,129,0.06)'}},
+      {name:'2026',type:'line',smooth:true,symbol:'none',
+        data:h26.map(v=>+(v/t26*100).toFixed(2)),
+        itemStyle:{color:'#3b82f6'},lineStyle:{width:2.5},
+        areaStyle:{color:'rgba(59,130,246,0.08)'}}
+    ]
+  });
+})();
+
+// c-cmp-mode — stacked % bar, all 3 years
+(()=>{
+  const ec=mk('c-cmp-mode');
+  const modes=['Mobile App','Self Service','Call','Driver Self Report','Other'];
+  // 2024: 1688 Mobile App, 625 Self Service, 1086 Call, 331 Driver SR, 12 Other  (total 3742)
+  // 2025: 0 Mobile App, 1 Self Service, 0 Call, 211 Driver SR, 0 Other  (total 212)
+  // 2026: 0 Mobile App, 2518 Self Service, 600 Call, 3 Driver SR, 4 Other  (total 3125)
+  const raw={
+    '2024':[1688,625,1086,331,12],
+    '2025':[0,1,0,211,0],
+    '2026':[0,2518,600,3,4]
+  };
+  const mColors=modes.map(m=>cc(m));
+  const years=['2024','2025','2026'];
+  const totals={'2024':3742,'2025':212,'2026':3125};
+  ec.setOption({...base(),
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'#0f172a',borderColor:'#334155',textStyle:{color:'#e2e8f0'},
+      formatter:params=>params.filter(p=>p.value>0).map(p=>`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:5px"></span>${p.seriesName}: ${p.value.toFixed(1)}%`).join('<br/>')},
+    legend:{bottom:0,textStyle:{color:LABEL,fontSize:10},data:modes},
+    grid:{left:20,right:20,top:20,bottom:50,containLabel:true},
+    xAxis:{type:'category',data:years,axisLabel:{color:LABEL,fontSize:13,fontWeight:600},axisLine:{lineStyle:{color:AXIS}}},
+    yAxis:{type:'value',max:100,name:'% of requests',nameTextStyle:{color:LABEL,fontSize:10},
+      axisLine:{lineStyle:{color:AXIS}},splitLine:{lineStyle:{color:'#1e293b'}},
+      axisLabel:{color:LABEL,formatter:v=>v+'%'}},
+    series:modes.map((m,mi)=>({
+      name:m,type:'bar',stack:'total',barMaxWidth:80,
+      data:years.map(y=>+(raw[y][mi]/totals[y]*100).toFixed(1)),
+      itemStyle:{color:mColors[mi]},
+      label:{show:true,formatter:p=>p.value>5?p.value.toFixed(0)+'%':'',color:'#fff',fontSize:11,fontWeight:600}
+    }))
+  });
+})();
+
+// ════════════════════════════════════════
+// GLOBAL FILTER BAR
+// ════════════════════════════════════════
+
+// Per-park, per-day-type breakdowns for 2026 filterable charts
+const PARKS_ALL = ["MacArthur Park","Seoul International Park","Echo Park","Jackie Tatum Harvard Recreation Center","Venice Beach Recreation Center","Whitsett Fields","South Park Recreation Center","Lanark Recreation Center","Stoner Recreation Center","Green Meadows Recreation Center","El Sereno Recreation Center","Northridge Recreation Center","Sylmar Recreation Center","Sheldon-Arleta Park","Westwood Recreation Center","Wilmington Recreation Center","Sycamore Grove","Ken Malloy Harbor Regional Park","Hansen Dam Pool","Cheviot Hills Recreation Center"];
+const DAY_TYPES_ALL = ["Day Before","Event Day","Day After"];
+
+// Accurate per-park, per-day-type totals (computed from source CSV)
+const PARK_TOTALS_26 = {
+  "MacArthur Park":                        {"Day Before":369,"Event Day":587,"Day After":905},
+  "Seoul International Park":             {"Day Before":123,"Event Day":94,"Day After":55},
+  "Echo Park":                             {"Day Before":72,"Event Day":63,"Day After":78},
+  "Jackie Tatum Harvard Recreation Center":{"Day Before":53,"Event Day":68,"Day After":59},
+  "Venice Beach Recreation Center":        {"Day Before":42,"Event Day":26,"Day After":9},
+  "Whitsett Fields":                       {"Day Before":27,"Event Day":16,"Day After":33},
+  "South Park Recreation Center":          {"Day Before":18,"Event Day":17,"Day After":25},
+  "Lanark Recreation Center":              {"Day Before":22,"Event Day":25,"Day After":11},
+  "Stoner Recreation Center":              {"Day Before":13,"Event Day":25,"Day After":20},
+  "Green Meadows Recreation Center":       {"Day Before":18,"Event Day":18,"Day After":8},
+  "El Sereno Recreation Center":           {"Day Before":14,"Event Day":10,"Day After":18},
+  "Northridge Recreation Center":          {"Day Before":11,"Event Day":13,"Day After":11},
+  "Sylmar Recreation Center":              {"Day Before":12,"Event Day":10,"Day After":9},
+  "Sheldon-Arleta Park":                   {"Day Before":11,"Event Day":14,"Day After":5},
+  "Westwood Recreation Center":            {"Day Before":4,"Event Day":11,"Day After":15},
+  "Wilmington Recreation Center":          {"Day Before":10,"Event Day":6,"Day After":13},
+  "Sycamore Grove":                        {"Day Before":4,"Event Day":10,"Day After":8},
+  "Ken Malloy Harbor Regional Park":       {"Day Before":1,"Event Day":3,"Day After":0},
+  "Hansen Dam Pool":                       {"Day Before":2,"Event Day":0,"Day After":0},
+  "Cheviot Hills Recreation Center":       {"Day Before":0,"Event Day":0,"Day After":1}
+};
+
+// Complaint type per-park totals for 2026
+const CT_BY_PARK_26 = {
+  "MacArthur Park":{"Graffiti Removal":1514,"Homeless Encampment":201,"Street Sweeping":70,"Illegal Dumping Item Pickup":25,"Information-Only":15,"Item Pickups":10,"Dockless Mobility Enforcement":8,"Other":18},
+  "Seoul International Park":{"Illegal Dumping Item Pickup":107,"Graffiti Removal":37,"Item Pickups":31,"Information-Only":30,"Service Not Complete":16,"Homeless Encampment":15,"Other":36},
+  "Echo Park":{"Graffiti Removal":49,"Illegal Dumping Item Pickup":42,"Item Pickups":37,"Information-Only":33,"Homeless Encampment":7,"Dockless Mobility Enforcement":4,"Service Not Complete":3,"Other":38},
+  "Jackie Tatum Harvard Recreation Center":{"Illegal Dumping Item Pickup":61,"Item Pickups":42,"Information-Only":31,"Service Not Complete":13,"Graffiti Removal":8,"Homeless Encampment":3,"Other":22},
+  "Venice Beach Recreation Center":{"Dockless Mobility Enforcement":34,"Information-Only":13,"Homeless Encampment":7,"Illegal Dumping Item Pickup":5,"Item Pickups":5,"Graffiti Removal":4,"Service Not Complete":2,"Other":7},
+  "Whitsett Fields":{"Illegal Dumping Item Pickup":22,"Item Pickups":15,"Homeless Encampment":11,"Information-Only":9,"Graffiti Removal":8,"Service Not Complete":2,"Other":9},
+  "South Park Recreation Center":{"Illegal Dumping Item Pickup":18,"Information-Only":13,"Item Pickups":12,"Graffiti Removal":3,"Homeless Encampment":1,"Service Not Complete":1,"Other":12},
+  "Lanark Recreation Center":{"Illegal Dumping Item Pickup":21,"Information-Only":11,"Item Pickups":9,"Graffiti Removal":4,"Homeless Encampment":4,"Service Not Complete":1,"Other":8},
+  "Stoner Recreation Center":{"Information-Only":19,"Illegal Dumping Item Pickup":16,"Item Pickups":10,"Dockless Mobility Enforcement":3,"Service Not Complete":1,"Other":9},
+  "Green Meadows Recreation Center":{"Information-Only":11,"Item Pickups":10,"Illegal Dumping Item Pickup":8,"Service Not Complete":4,"Homeless Encampment":1,"Other":10},
+  "El Sereno Recreation Center":{"Item Pickups":15,"Illegal Dumping Item Pickup":11,"Information-Only":6,"Service Not Complete":1,"Other":9},
+  "Northridge Recreation Center":{"Item Pickups":16,"Service Not Complete":6,"Information-Only":6,"Illegal Dumping Item Pickup":2,"Homeless Encampment":1,"Other":4},
+  "Sylmar Recreation Center":{"Item Pickups":15,"Information-Only":7,"Service Not Complete":2,"Other":7},
+  "Sheldon-Arleta Park":{"Illegal Dumping Item Pickup":11,"Item Pickups":7,"Information-Only":4,"Graffiti Removal":3,"Homeless Encampment":2,"Other":3},
+  "Westwood Recreation Center":{"Item Pickups":15,"Illegal Dumping Item Pickup":9,"Information-Only":2,"Other":4},
+  "Wilmington Recreation Center":{"Information-Only":10,"Illegal Dumping Item Pickup":8,"Item Pickups":6,"Other":5},
+  "Sycamore Grove":{"Item Pickups":8,"Graffiti Removal":6,"Illegal Dumping Item Pickup":4,"Information-Only":1,"Homeless Encampment":1,"Other":2},
+  "Ken Malloy Harbor Regional Park":{"Illegal Dumping Item Pickup":1,"Service Not Complete":1,"Other":2},
+  "Hansen Dam Pool":{"Item Pickups":1,"Information-Only":1},
+  "Cheviot Hills Recreation Center":{"Item Pickups":1}
+};
+
+const fltPark = document.getElementById('flt-park');
+const fltDay  = document.getElementById('flt-day');
+const fltReset= document.getElementById('flt-reset');
+const fltCount= document.getElementById('flt-count');
+
+function getFilteredTotal26(){
+  const park = fltPark.value;
+  const day  = fltDay.value;
+  if(park==='all' && day==='all') return 3125;
+  let total = 0;
+  const parks = park==='all' ? PARKS_ALL : [park];
+  const days  = day==='all'  ? DAY_TYPES_ALL : [day];
+  parks.forEach(p => days.forEach(d => { total += (PARK_TOTALS_26[p]||{})[d]||0; }));
+  return total;
+}
+
+function updateFilterCount(){
+  const activeTab = document.querySelector('.tab-page.active');
+  const is26 = activeTab && activeTab.id==='tab-26';
+  const is25 = activeTab && activeTab.id==='tab-25';
+  const park = fltPark.value; const day = fltDay.value;
+  const isFiltered = park!=='all' || day!=='all';
+
+  // Day filter only applies to 2026 tab
+  fltDay.disabled = !is26;
+  fltDay.style.opacity = is26 ? '1' : '0.4';
+
+  if(!isFiltered){ fltCount.textContent=''; return; }
+  if(is26){
+    const n = getFilteredTotal26();
+    fltCount.textContent = `Showing ${n.toLocaleString()} of 3,125 requests`;
+  } else if(is25){
+    fltCount.textContent = park==='all' ? '' : `Filtered to: ${park}`;
+  } else {
+    fltCount.textContent = '';
+  }
+}
+
+function applyFilters(){
+  const park = fltPark.value;
+  const day  = fltDay.value;
+  updateFilterCount();
+
+  // ── 2026 park-total bar chart ──
+  const ec26pt = echarts.getInstanceByDom(document.getElementById('c26-park-total'));
+  if(ec26pt){
+    let data;
+    if(park==='all'){
+      const sorted = parks26.map((p,i)=>({p,v:parkTotals26[i]})).sort((a,b)=>b.v-a.v);
+      data = sorted.map(d=>({name:d.p,value:d.v}));
+    } else {
+      const days = day==='all' ? DAY_TYPES_ALL : [day];
+      const v = days.reduce((s,d)=>s+((PARK_TOTALS_26[park]||{})[d]||0),0);
+      data = [{name:park,value:v}];
+    }
+    ec26pt.setOption({
+      yAxis:{data:data.map(d=>d.name.replace(' Recreation Center',' RC'))},
+      series:[{data:data.map(d=>d.value)}]
+    });
+  }
+
+  // ── 2026 park-top bar chart (complaint breakdown) ──
+  const ec26top = echarts.getInstanceByDom(document.getElementById('c26-park-top'));
+  if(ec26top && park!=='all'){
+    const ctData = CT_BY_PARK_26[park]||{};
+    const sorted = Object.entries(ctData).sort((a,b)=>b[1]-a[1]);
+    ec26top.setOption({
+      yAxis:{data:sorted.map(d=>d[0])},
+      series:[{data:sorted.map(d=>({value:d[1],itemStyle:{color:cc(d[0])}})),
+        label:{formatter:p=>sorted[p.dataIndex][0]}}]
+    });
+  } else if(ec26top && park==='all'){
+    const sorted2=parks26.map((p,i)=>({p,top:parkTopCt26[i],cnt:parkTopCnt26[i]})).sort((a,b)=>b.cnt-a.cnt);
+    ec26top.setOption({
+      yAxis:{data:sorted2.map(d=>d.p.replace(' Recreation Center',' RC'))},
+      series:[{data:sorted2.map(d=>({value:d.cnt,itemStyle:{color:cc(d.top)}})),
+        label:{formatter:p=>sorted2[p.dataIndex].top}}]
+    });
+  }
+
+  // ── 2025 park-total chart ──
+  const ec25pt = echarts.getInstanceByDom(document.getElementById('c25-park-total'));
+  if(ec25pt && park!=='all'){
+    const idx = parks25.indexOf(park);
+    if(idx>=0){
+      ec25pt.setOption({
+        yAxis:{data:[park.replace(' Recreation Center',' RC')]},
+        series:[{data:[parkTotals25[idx]]}]
+      });
+    } else {
+      ec25pt.setOption({yAxis:{data:['No 2025 data for this park']},series:[{data:[0]}]});
+    }
+  } else if(ec25pt && park==='all'){
+    const sorted25=parks25.map((p,i)=>({p,v:parkTotals25[i]})).sort((a,b)=>b.v-a.v);
+    ec25pt.setOption({
+      yAxis:{data:sorted25.map(d=>d.p.replace(' Recreation Center',' RC'))},
+      series:[{data:sorted25.map(d=>d.v)}]
+    });
+  }
+}
+
+fltPark.addEventListener('change', applyFilters);
+fltDay.addEventListener('change', applyFilters);
+fltReset.addEventListener('click', ()=>{
+  fltPark.value='all'; fltDay.value='all'; applyFilters();
+});
+
+// Update filter state whenever tab changes
+const origShowTab = showTab;
+// Patch showTab to also update filter
+const _origShowTab = showTab;
+window.showTab = function(tabId){
+  _origShowTab(tabId);
+  // Day filter only meaningful on 2026 tab
+  const is26 = tabId==='tab-26';
+  fltDay.disabled = !is26;
+  fltDay.style.opacity = is26 ? '1' : '0.4';
+  if(!is26) fltDay.value='all';
+  updateFilterCount();
+};
+// Re-attach nav tab listeners with patched showTab
+document.querySelectorAll('.nav-tab').forEach(tab=>{
+  tab.onclick = ()=>window.showTab(tab.dataset.tab);
+});
+
+// Initial state
+updateFilterCount();
+
+</script>
+</body>
+</html>
